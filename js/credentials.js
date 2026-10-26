@@ -15,15 +15,8 @@ module.exports = function() {
         var result = {};
 
         for(var f in fields) {
-            if (fields.hasOwnProperty(f) && credential.hasOwnProperty(fields[f])) {
-                var value = credential[fields[f]];
-                if(typeof(value) === 'string') {
-                    console.log('plop');
-                    value = value.replace(/[\u00A0-\u9999<>&'"]/gim, function (i) {
-                        return '&#' + i.charCodeAt(0) + ';';
-                    });
-                }
-                result[fields[f]] = value;
+            if (Object.prototype.hasOwnProperty.call(fields, f) && Object.prototype.hasOwnProperty.call(credential, fields[f])) {
+                result[fields[f]] = credential[fields[f]];
             }
         }
 
@@ -32,7 +25,7 @@ module.exports = function() {
 
     function display_credentials(credentials) {
         var container = document.getElementsByClassName('credentials')[0];
-        container.innerHTML = '';
+        container.replaceChildren();
 
         credentials = Object.keys(credentials).map(function(e) {
             return credentials[e];
@@ -40,27 +33,79 @@ module.exports = function() {
         credentials.sort(CredentialStorage.sortCredentials);
 
         for (var key in credentials) {
-            if (credentials.hasOwnProperty(key)) {
-                // We sanitize upon display only because the username and
-                // password might contain chars that could be transformed
-                // thus making the credential invalid.
+            if (Object.prototype.hasOwnProperty.call(credentials, key)) {
                 var c = sanitize_credential(credentials[key]);
+                var url = typeof c.url === 'string' ? c.url : '';
+                var username = typeof c.username === 'string' ? c.username : '';
+                var password = typeof c.password === 'string' ? c.password : '';
+                var row = document.createElement('tr');
+                var urlCell = document.createElement('td');
+                urlCell.className = 'url';
+                urlCell.title = url;
+                var urlLabel = document.createElement('span');
+                urlLabel.className = 'mobile-field-label';
+                urlLabel.textContent = Translator.translate('url_regexp');
+                urlCell.appendChild(urlLabel);
+                urlCell.appendChild(document.createTextNode(url));
+                row.appendChild(urlCell);
 
-                container.innerHTML +=
-                    '<tr>' +
-                        '<td class="url" title="' + c.url + '">' + c.url + '</td>' +
-                        '<td class="username" title="' + c.username + '">' + c.username + '</td>' +
-                        '<td class="password">' +
-                            '<span class="' + password_stars_class + '">***</span>' +
-                            '<span class="' + password_real_class + '">' + c.password + '</span>' +
-                            '<button class="show-password">' + Translator.translate('show_hide_password') + '</button>' +
-                        '</td>' +
-                        '<td class="priority">' + (c.priority || 1) + '</td>' +
-                        '<td class="action">' +
-                            '<button class="remove" data-url="' + c.url + '">' + Translator.translate('remove_credential') + '</button>' + '' +
-                            '<button class="edit" data-url="' + c.url + '">' + Translator.translate('edit_credential') + '</button>' + '' +
-                        '</td>' +
-                    '</tr>';
+                var usernameCell = document.createElement('td');
+                usernameCell.className = 'username';
+                usernameCell.title = username;
+                var usernameLabel = document.createElement('span');
+                usernameLabel.className = 'mobile-field-label';
+                usernameLabel.textContent = Translator.translate('username');
+                usernameCell.appendChild(usernameLabel);
+                usernameCell.appendChild(document.createTextNode(username));
+                row.appendChild(usernameCell);
+
+                var passwordCell = document.createElement('td');
+                passwordCell.className = 'password';
+                var passwordLabel = document.createElement('span');
+                passwordLabel.className = 'mobile-field-label';
+                passwordLabel.textContent = Translator.translate('password');
+                passwordCell.appendChild(passwordLabel);
+                var passwordStars = document.createElement('span');
+                passwordStars.className = password_stars_class;
+                passwordStars.textContent = '***';
+                passwordCell.appendChild(passwordStars);
+                var passwordReal = document.createElement('span');
+                passwordReal.className = password_real_class;
+                passwordReal.textContent = password;
+                passwordCell.appendChild(passwordReal);
+                var showPassword = document.createElement('button');
+                showPassword.type = 'button';
+                showPassword.className = 'show-password';
+                showPassword.textContent = Translator.translate('show_hide_password');
+                passwordCell.appendChild(showPassword);
+                row.appendChild(passwordCell);
+
+                var priorityCell = document.createElement('td');
+                priorityCell.className = 'priority';
+                var priorityLabel = document.createElement('span');
+                priorityLabel.className = 'mobile-field-label';
+                priorityLabel.textContent = Translator.translate('priority');
+                priorityCell.appendChild(priorityLabel);
+                priorityCell.appendChild(document.createTextNode(String(c.priority || 1)));
+                row.appendChild(priorityCell);
+
+                var actionCell = document.createElement('td');
+                actionCell.className = 'action';
+                var removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'remove';
+                removeButton.setAttribute('data-url', url);
+                removeButton.textContent = Translator.translate('remove_credential');
+                actionCell.appendChild(removeButton);
+                var editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'edit';
+                editButton.setAttribute('data-url', url);
+                editButton.textContent = Translator.translate('edit_credential');
+                actionCell.appendChild(editButton);
+                row.appendChild(actionCell);
+
+                container.appendChild(row);
             }
         }
     }
@@ -92,7 +137,7 @@ module.exports = function() {
 
         var valid = true;
         for (var key in values) {
-            if (values.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(values, key)) {
                 var v = values[key];
 
                 if(v === '') {
@@ -103,24 +148,20 @@ module.exports = function() {
 
         if(valid) {
             var old = document.querySelector('tr.editing .url');
-            if(old && old.innerText.length > 0) {
-                CredentialStorage.removeCredential(old.innerText);
-            }
-
-            CredentialStorage.addCredential(values);
-
-            url.value = '';
-            username.value = '';
-            password.value = '';
-            priority.value = 1;
-
-            reset_form();
+            var oldUrl = old && old.innerText.length > 0 ? old.innerText : undefined;
+            CredentialStorage.saveCredential(values, oldUrl).then(function() {
+                url.value = '';
+                username.value = '';
+                password.value = '';
+                priority.value = 1;
+                reset_form();
+            }).catch(function() {});
         }
     }
 
     function remove(e) {
         var url = e.target.getAttribute('data-url');
-        CredentialStorage.removeCredential(url);
+        CredentialStorage.removeCredential(url).catch(function() {});
     }
 
     function edit(e) {
@@ -174,14 +215,14 @@ module.exports = function() {
             }
         });
 
-        Storage.get(storage_key, function(result) {
+        Storage.getAsync(storage_key, {}).then(function(result) {
+            result = result && typeof result === 'object' ? result : {};
             document.getElementById('url').value = result.url || '';
             document.getElementById('username').value = result.username || '';
             document.getElementById('password').value = result.password || '';
             document.getElementById('priority').value = result.priority || 1;
-
-            Storage.set(storage_key, {});
-        });
+            return Storage.setAsync(storage_key, {});
+        }).catch(function() {});
 
         addEventListener('unload', function () {
             var url = document.getElementById('url').value;
@@ -195,7 +236,7 @@ module.exports = function() {
                 password: password,
                 priority: priority
             };
-            chrome.extension.getBackgroundPage().Storage.set.apply(this, [storage_key, values]);
+            Storage.setAsync(storage_key, values).catch(function() {});
         });
     }
 

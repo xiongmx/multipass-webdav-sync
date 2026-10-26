@@ -4,8 +4,7 @@
     "name": "__MSG_extName__",
     "short_name": "MultiPass",
     "description": "__MSG_extDescription__",
-    "homepage_url": "http://gilles.crettenand.info/MultiPass/",
-    "version": "1.0.0",
+    "version": "1.1.0",
 
     "default_locale": "en",
 
@@ -36,14 +35,14 @@
     "permissions": [
         "webRequest", "webRequestAuthProvider",
         "storage",
-        "tabs"
+        "tabs",
+        "alarms"
     ],
     "host_permissions": [
         "<all_urls>"
     ],
 
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self';",
-        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self';"
+        "extension_pages": "script-src 'self'; object-src 'self';"
     }
 }

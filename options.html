@@ -2,6 +2,7 @@
 <html>
     <head>
         <title data-i18n="extName">MultiPass for HTTP basic authentication</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" type="text/css" href="css/chrome-bootstrap.css"/>
         <link rel="stylesheet" type="text/css" href="css/style.css"/>
     </head>
@@ -22,34 +23,32 @@
 
                 <tbody class="credentials">
                 </tbody>
-
-                <tfoot>
-                    <form id="credential-form">
-                        <tr>
-                            <td class="url">
-                                <label for="url" data-i18n="url">Url</label>
-                                <input type="text" name="url" id="url" required="required">
-                            </td>
-                            <td class="username">
-                                <label for="username" data-i18n="username">Username</label>
-                                <input type="text" name="username" id="username" required="required">
-                            </td>
-                            <td class="password">
-                                <label for="password" data-i18n="password">Password</label>
-                                <input type="password" name="password" id="password" required="required">
-                            </td>
-                            <td class="priority">
-                                <label for="priority" data-i18n="priority">Priority</label>
-                                <input type="number" value="1" name="priority" id="priority" required="required">
-                            </td>
-                            <td class="action">
-                                <button type="submit" class="credential-form-submit" data-i18n="add_credential">Add</button>
-                                <button type="reset" class="credential-form-reset" data-i18n="clear_credential">Clear</button>
-                            </td>
-                        </tr>
-                    </form>
-                </tfoot>
             </table>
+
+            <form id="credential-form" class="credential-form">
+                <div class="credential-fields">
+                    <label for="url"><span data-i18n="url_regexp">Url (regexp)</span>
+                        <input type="text" name="url" id="url" required="required">
+                    </label>
+                    <label for="username"><span data-i18n="username">Username</span>
+                        <input type="text" name="username" id="username" required="required">
+                    </label>
+                    <label for="password"><span data-i18n="password">Password</span>
+                        <input type="password" name="password" id="password" required="required">
+                    </label>
+                    <label for="priority"><span data-i18n="priority">Priority</span>
+                        <input type="number" value="1" name="priority" id="priority" required="required">
+                    </label>
+                </div>
+                <div class="credential-form-actions">
+                    <button type="submit" class="credential-form-submit" data-i18n="add_credential">Add</button>
+                    <button type="reset" class="credential-form-reset" data-i18n="clear_credential">Clear</button>
+                </div>
+            </form>
+
+            <p id="storage-status" class="webdav-status" role="status" aria-live="polite" hidden></p>
+
+            <p class="webdav-warning">Use credential rules only for trusted HTTPS sites. HTTP Basic credentials are not encrypted when sent over HTTP.</p>
 
             <h2 data-i18n="test_section">Test your regex</h2>
 
@@ -69,7 +68,7 @@
                         </td>
                         <td>
                             <ul id="test-urls" contenteditable="true">
-                                <li>http://www.example.com</li>
+                                <li>https://example.com</li>
                             </ul>
                         </td>
                     </tr>
@@ -81,8 +80,7 @@
             <p data-i18n="import_description">You can import credentials into the extension. The file format is the following:</p>
             <pre>
 [
-    {"url":"some.url.com", "username":"admin", "password":"1234", "priority":"1"},
-    {"url":"example.com", "username":"john.doe", "password":"password", "priority":"2"}
+    {"url":"^https://example\\.com/", "username":"YOUR_USERNAME", "password":"YOUR_PASSWORD", "priority":"1"}
 ]
             </pre>
 
@@ -124,17 +122,58 @@
 
             <p><a href="#" download="multipass-credentials.json" class="export-credentials" data-i18n="export_button">Download credentials as JSON file.</a></p>
 
+            <h2>Custom WebDAV sync</h2>
+
+            <p>WebDAV sync uses your endpoint account over HTTPS. The credentials file on the WebDAV server is plaintext, so the server operator can read it. Endpoint credentials are saved only in this browser profile’s local extension storage.</p>
+            <p>Example: <code>https://webdav.example.net/dav/multipass-sync.json</code></p>
+            <table class="form-table webdav-table">
+                <tr>
+                    <td><label for="webdav-url">WebDAV file URL</label></td>
+                    <td><input type="url" id="webdav-url" autocomplete="url" placeholder="https://webdav.example.net/dav/multipass-sync.json"></td>
+                </tr>
+                <tr>
+                    <td><label for="webdav-username">WebDAV username</label></td>
+                    <td><input type="text" id="webdav-username" autocomplete="username"></td>
+                </tr>
+                <tr>
+                    <td><label for="webdav-password">WebDAV password</label></td>
+                    <td><input type="password" id="webdav-password" autocomplete="current-password"></td>
+                </tr>
+                <tr>
+                    <td><label for="webdav-interval">Automatic sync interval</label></td>
+                    <td>
+                        <select id="webdav-interval">
+                            <option value="0">Manual only</option>
+                            <option value="5">Every 5 minutes</option>
+                            <option value="15">Every 15 minutes</option>
+                            <option value="30">Every 30 minutes</option>
+                            <option value="60">Every hour</option>
+                            <option value="360">Every 6 hours</option>
+                            <option value="720">Every 12 hours</option>
+                            <option value="1440">Every 24 hours</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+            <p class="webdav-actions">
+                <button type="button" id="webdav-save">Save settings on this device</button>
+                <button type="button" id="webdav-sync">Sync now</button>
+            </p>
+            <p class="webdav-actions">
+                <button type="button" id="webdav-pull">Pull remote (replace local)</button>
+                <button type="button" id="webdav-push">Push local (replace remote)</button>
+                <button type="button" id="webdav-backup" disabled="disabled">Download latest local backup</button>
+            </p>
+            <p id="webdav-status" class="webdav-status" role="status" aria-live="polite">Configure a WebDAV file URL to begin.</p>
+            <p class="webdav-warning">Use HTTPS. HTTP is allowed only for localhost testing and is unencrypted. The file stored on WebDAV contains usernames and passwords in plaintext; HTTPS protects them in transit but not from the WebDAV server or its administrators. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval. Local browser storage is not a password vault.</p>
+
             <h2 data-i18n="clear_section">Clear all credentials</h2>
 
             <button class="clear-all" data-i18n="clear_button">Clear all credentials</button>
 
             <div class="footer">
                 <p>MultiPass - &copy; <a href="mailto:gilles@crettenand.info">Gilles Crettenand</a> - <span class="multipass-version"></span></p>
-                <p>
-                    <a href="http://www.wtfpl.net/">
-                        <img src="http://www.wtfpl.net/wp-content/uploads/2012/12/wtfpl-badge-4.png" width="80" height="15" alt="WTFPL"/>
-                    </a>
-                </p>
+                <p><a href="https://www.wtfpl.net/">WTFPL license</a></p>
             </div>
         </main>
 

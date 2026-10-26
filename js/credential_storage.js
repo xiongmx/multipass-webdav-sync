@@ -1,58 +1,112 @@
+/*global Promise*/
 'use strict';
 
 var Storage = require('./storage');
 
 module.exports = function() {
     var credentials = {};
-
     var variable_name = 'credentials';
+    var writeQueue = Promise.resolve();
 
     function _key(key) {
         var hash = 0;
         var len = key.length;
 
-        if (len === 0) {
-            return hash;
-        }
+        if (len === 0) return hash;
 
         for (var i = 0; i < len; i++) {
             var chr = key.charCodeAt(i);
             hash = ((hash << 5) - hash) + chr;
-            hash |= 0; // Convert to 32bit integer
+            hash |= 0;
         }
         return hash;
     }
 
-    function addCredential(credential) {
-        credentials[_key(credential.url)] = credential;
-        Storage.set(variable_name, credentials);
+    function clone(source) {
+        var result = {};
+        Object.keys(source || {}).forEach(function(key) {
+            result[key] = source[key];
+        });
+        return result;
+    }
 
-        return credential;
+    function enqueueWrite(update) {
+        var operation = writeQueue.then(function() {
+            var next = clone(credentials);
+            var result = update(next);
+            return Storage.setAsync(variable_name, next).then(function() {
+                credentials = next;
+                return result;
+            });
+        });
+        writeQueue = operation.then(function() {}, function() {});
+        return operation;
+    }
+
+    function saveCredential(credential, oldUrl) {
+        if(!credential || typeof credential.url !== 'string') {
+            return Promise.reject(new Error('A credential URL is required.'));
+        }
+        return enqueueWrite(function(next) {
+            if(typeof oldUrl === 'string') delete next[_key(oldUrl)];
+            next[_key(credential.url)] = credential;
+            return credential;
+        });
+    }
+
+    function addCredential(credential) {
+        return saveCredential(credential);
+    }
+
+    function addCredentials(items) {
+        var input = Array.isArray(items) ? items : [];
+        return enqueueWrite(function(next) {
+            input.forEach(function(credential) {
+                if(!credential || typeof credential.url !== 'string') {
+                    throw new Error('Every imported credential must have a URL.');
+                }
+                next[_key(credential.url)] = credential;
+            });
+        });
     }
 
     function removeCredential(url) {
-        var key = _key(url);
-        var credential = credentials[key];
-        delete credentials[key];
-        Storage.set(variable_name, credentials);
+        var removed;
+        return enqueueWrite(function(next) {
+            var key = _key(url);
+            removed = next[key];
+            delete next[key];
+            return removed;
+        });
+    }
 
-        return credential;
+    function replaceAll(newCredentials) {
+        var items = Array.isArray(newCredentials) ? newCredentials : Object.keys(newCredentials || {}).map(function(key) {
+            return newCredentials[key];
+        });
+        return enqueueWrite(function(next) {
+            Object.keys(next).forEach(function(key) { delete next[key]; });
+            items.forEach(function(credential) {
+                if(credential && typeof credential.url === 'string') {
+                    next[_key(credential.url)] = credential;
+                }
+            });
+        });
     }
 
     function clearAll() {
-        credentials = {};
-        Storage.set(variable_name, credentials);
+        return enqueueWrite(function(next) {
+            Object.keys(next).forEach(function(key) { delete next[key]; });
+        });
     }
 
     function getCredentials(status) {
         var found = [];
         for (var key in credentials) {
-            if (credentials.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(credentials, key)) {
                 try {
                     var re = new RegExp(credentials[key].url);
-                    if (re.test(status.url)) {
-                        found.push(credentials[key]);
-                    }
+                    if (re.test(status.url)) found.push(credentials[key]);
                 } catch(e) {
                     // the regex contained an error
                 }
@@ -60,55 +114,60 @@ module.exports = function() {
         }
 
         found.sort(sortCredentials);
-
         return found;
     }
 
     function register(callback) {
-        Storage.register(variable_name, callback);
+        var unregister = Storage.register(variable_name, callback);
         callback(credentials);
+        return unregister;
     }
 
-    function updateCredentials(result)
-    {
-        // convert from the old storage format
+    function updateCredentials(result) {
         if(Array.isArray(result)) {
-            credentials = {};
-
-            for (var key in result) {
-                if (result.hasOwnProperty(key)) {
-                    credentials[_key(result[key].url)] = result[key];
+            var migrated = {};
+            result.forEach(function(credential) {
+                if(credential && typeof credential.url === 'string') {
+                    migrated[_key(credential.url)] = credential;
                 }
-            }
-
-            Storage.set(variable_name, credentials);
-        } else {
+            });
+            credentials = migrated;
+            Storage.setAsync(variable_name, credentials).catch(function() {});
+        } else if(result && typeof result === 'object') {
             credentials = result;
+        } else {
+            credentials = {};
         }
     }
 
-    function sortCredentials(a, b)
-    {
+    function sortCredentials(a, b) {
         if(typeof(a.priority) === 'undefined') a.priority = 1;
         if(typeof(b.priority) === 'undefined') b.priority = 1;
-
         return a.priority - b.priority;
     }
 
-    // retrieve the credentials from storage
-    Storage.get(variable_name, updateCredentials);
-    register(updateCredentials);
+    // Subscribe before loading so a newer write from another extension context
+    // cannot be overwritten by a slower initial read.
+    var changeRevision = 0;
+    Storage.register(variable_name, function(result) {
+        changeRevision++;
+        updateCredentials(result);
+    });
+    var initialRevision = changeRevision;
+    Storage.getAsync(variable_name, {}).then(function(result) {
+        if(changeRevision === initialRevision) updateCredentials(result);
+    }).catch(function() {});
 
     return {
         'register': register,
-
         'getCredentials': getCredentials,
-
         'sortCredentials': sortCredentials,
-
         'removeCredential': removeCredential,
         'clearAll': clearAll,
+        'replaceAll': replaceAll,
         'addCredential': addCredential,
-        'asJSON': function() { return JSON.stringify(credentials); },
+        'addCredentials': addCredentials,
+        'saveCredential': saveCredential,
+        'asJSON': function() { return JSON.stringify(credentials); }
     };
 }();

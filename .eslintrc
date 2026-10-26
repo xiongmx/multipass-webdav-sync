@@ -1,4 +1,15 @@
 {
+    "env": {
+        "node": true,
+        "browser": true
+    },
+    "parserOptions": {
+        "ecmaVersion": 2021
+    },
+    "globals": {
+        "chrome": "readonly"
+    },
+    "extends": "eslint:recommended",
     "rules": {
         "indent": [
             2,
@@ -16,18 +27,8 @@
             2,
             "always"
         ],
-        "no-console": [1]
-    },
-    "env": {
-        "node": true,
-        "browser": true
-    },
-    "extends": "eslint:recommended",
-    "ecmaFeatures": {
-        "jsx": true,
-        "experimentalObjectRestSpread": true
-    },
-    "globals": {
-        "chrome": false
-    },
+        "no-console": [
+            1
+        ]
+    }
 }

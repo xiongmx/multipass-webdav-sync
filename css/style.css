@@ -1,6 +1,23 @@
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 0;
+    width: 100%;
+}
+
 body.chrome-bootstrap {
-    margin: 14px 17px;
-    max-width: 800px;
+    width: calc(100% - 32px);
+    max-width: 1200px;
+    min-width: 0;
+    margin: 16px auto;
+    overflow-wrap: anywhere;
+}
+
+.mainview.view {
+    width: 100%;
+    min-width: 0;
 }
 
 .navigation p {
@@ -8,69 +25,86 @@ body.chrome-bootstrap {
     margin-left: 24px;
 }
 
+button,
+input,
+textarea,
+select {
+    max-width: 100%;
+    font: inherit;
+}
+
+button {
+    min-height: 2.6em;
+    white-space: normal;
+}
+
+input,
+textarea,
+select {
+    min-width: 0;
+}
+
+h2 {
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+pre,
+code,
+a,
+.webdav-warning,
+.webdav-status {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 table.credential-table {
+    width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
 }
 
-table.credential-table tbody tr:nth-child(odd) {
-    background-color: #eee;
-}
-
-table.credential-table tbody tr:nth-child(even) {
-    background-color: #fff;
-}
-
-table.credential-table tbody tr.editing {
-    background-color: #87CEFA;
-}
-
-table.credential-table tbody tr.only-match {
-    background-color: #C0D860;
-}
-table.credential-table tbody tr.only-match:hover {
-    background-color: #789048;
-}
-
-table.credential-table tbody tr.multiple-match {
-    background-color: #ECF081;
-}
-table.credential-table tbody tr.multiple-match:hover {
-    background-color: #FFBE40;
-}
-
-table.credential-table tbody tr:hover {
-    background-color: #bbb;
-}
-
-table.credential-table td, th {
-    padding: 0.6em 0.7em;
+table.credential-table th,
+table.credential-table td {
+    padding: 0.6em 0.55em;
     text-align: left;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
 }
 
 table.credential-table th {
     background-color: #444;
-    color: white;
+    color: #fff;
 }
 
-table.credential-table td.url {
-    min-width: 15em;
-}
-
-table.credential-table td.username,
-table.credential-table td.password {
-    min-width: 8em;
-}
-
-table.credential-table td.priority {
-    min-width: 3em;
-}
+table.credential-table th.url,
+table.credential-table td.url { width: 32%; }
+table.credential-table th.username,
+table.credential-table td.username { width: 18%; }
+table.credential-table th.password,
+table.credential-table td.password { width: 18%; }
+table.credential-table th.priority,
+table.credential-table td.priority { width: 8%; }
+table.credential-table th.action,
+table.credential-table td.action { width: 24%; }
 
 table.credential-table td {
-    max-width: 350px;
-    text-overflow: ellipsis;
-    overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
+
+table.credential-table tbody tr:nth-child(odd) { background-color: #eee; }
+table.credential-table tbody tr:nth-child(even) { background-color: #fff; }
+table.credential-table tbody tr.editing { background-color: #d9efff; }
+table.credential-table tbody tr.only-match { background-color: #e2efbd; }
+table.credential-table tbody tr.multiple-match { background-color: #fff2bf; }
 
 .password {
     position: relative;
@@ -82,67 +116,343 @@ table.credential-table td {
 
 .password .show-password {
     display: none;
-
-    position: absolute;
-    right: 0;
-    top: 10px;
-    background: powderblue;
-    border: 0;
-    font-size: 8px;
+    position: static;
+    margin: 0.25em 0 0;
+    padding: 0.25em 0.5em;
+    background: #e7f4f8;
+    border: 1px solid #a7c6d0;
+    font-size: 0.85em;
 }
 
-table.credential-table tbody tr:hover .show-password {
-    display: inherit;
+table.credential-table tbody tr:hover .show-password,
+table.credential-table tbody tr:focus-within .show-password {
+    display: inline-flex;
 }
 
-table.credential-table tfoot label {
+.mobile-field-label {
     display: none;
 }
 
-table.credential-table tfoot input {
+.credentials button {
+    margin: 0.15em 0.25em 0.15em 0;
+}
+
+.credential-form {
     width: 100%;
 }
 
-table.credential-table tfoot button {
-    width: 47%;
+.credential-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr) minmax(5em, 0.6fr);
+    gap: 0.65em;
+    align-items: end;
+}
+
+.credential-fields label,
+.webdav-table label {
+    display: block;
+    min-width: 0;
+    font-weight: 600;
+}
+
+.credential-fields input,
+.webdav-table input {
+    display: block;
+    width: 100%;
+    min-height: 2.6em;
+    margin-top: 0.25em;
+}
+
+.credential-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-top: 0.75em;
+}
+
+.credential-form-actions button {
+    flex: 1 1 8em;
 }
 
 table.form-table {
     width: 100%;
-}
-
-table.form-table td:first-child {
-    width: 20%;
-    vertical-align: top;
+    table-layout: fixed;
+    border-collapse: collapse;
 }
 
 table.form-table td {
-    width: 80%;
+    width: auto;
+    padding: 0.45em;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+table.form-table td:first-child {
+    width: 28%;
 }
 
 table.form-table td textarea {
-    width: 98%;
-    height: 10.2em;
+    display: block;
+    width: 100%;
+    min-height: 10em;
+    resize: vertical;
 }
 
 table.form-table td output ul {
     margin: 0;
+    padding-left: 1.25em;
 }
 
 #test-urls {
     min-height: 4em;
     border: 1px solid #bfbfbf;
     border-radius: 2px;
-    box-sizing: border-box;
-    padding: 3px;
-    width: 97%;
+    padding: 0.4em;
+    width: 100%;
+    overflow-wrap: anywhere;
 }
 
 #test-urls > li {
     padding: 2px;
     margin: 1px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
-#test-urls > .matched {
-    background-color: #C0D860;
+#test-urls > .matched { background-color: #e2efbd; }
+
+.webdav-table {
+    width: 100%;
+    max-width: 900px;
+    table-layout: fixed;
+}
+
+.webdav-table td {
+    padding: 0.4em;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.webdav-table td:first-child {
+    width: 25%;
+}
+
+.webdav-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+}
+
+.webdav-actions button {
+    flex: 1 1 13em;
+    margin: 0;
+}
+
+.webdav-status {
+    border-left: 4px solid #4a8f54;
+    background: #eef7ef;
+    padding: 0.7em;
+    white-space: pre-wrap;
+}
+
+.webdav-status.error {
+    border-left-color: #b44343;
+    background: #fff0f0;
+}
+
+.webdav-warning {
+    color: #663c00;
+    background: #fff5df;
+    padding: 0.7em;
+}
+
+.footer img {
+    max-width: 100%;
+    height: auto;
+}
+
+@media (max-width: 900px) {
+    body.chrome-bootstrap {
+        width: calc(100% - 28px);
+        margin-top: 14px;
+        margin-bottom: 14px;
+    }
+
+    .credential-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    body.chrome-bootstrap {
+        width: calc(100% - 24px);
+        margin: 12px auto;
+        padding: 0;
+    }
+
+    .chrome-bootstrap .overlay .page {
+        width: calc(100vw - 16px);
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    table.credential-table {
+        display: block;
+        width: 100%;
+        border-collapse: separate;
+    }
+
+    table.credential-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    table.credential-table tbody,
+    table.credential-table tfoot {
+        display: block;
+        width: 100%;
+    }
+
+    table.credential-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.35em 0.75em;
+        width: 100%;
+        margin: 0 0 0.8em;
+        padding: 0.65em;
+        border: 1px solid #d0d0d0;
+        border-radius: 0.4em;
+    }
+
+    table.credential-table tbody td {
+        display: block;
+        width: auto !important;
+        max-width: none;
+        padding: 0.25em;
+        border: 0;
+        overflow: visible;
+    }
+
+    table.credential-table tbody td.url,
+    table.credential-table tbody td.action {
+        grid-column: 1 / -1;
+    }
+
+    table.credential-table tbody td.url {
+        font-weight: 600;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 0.5em;
+    }
+
+    .mobile-field-label {
+        display: block;
+        margin-bottom: 0.15em;
+        color: #555;
+        font-size: 0.78em;
+        font-weight: 400;
+    }
+
+    table.credential-table tbody td.action {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35em;
+        padding-top: 0.45em;
+        border-top: 1px solid #ddd;
+    }
+
+    .credentials button {
+        flex: 1 1 6em;
+        min-height: 2.8em;
+        margin: 0;
+    }
+
+    .password .show-password {
+        display: inline-flex;
+    }
+
+    .credential-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .credential-form-actions,
+    .credential-form-actions button,
+    .webdav-actions,
+    .webdav-actions button {
+        width: 100%;
+    }
+
+    .credential-form-actions button,
+    .webdav-actions button {
+        flex: 1 1 100%;
+    }
+
+    table.form-table,
+    table.form-table tbody,
+    table.form-table tr,
+    table.form-table td,
+    .webdav-table,
+    .webdav-table tbody,
+    .webdav-table tr,
+    .webdav-table td {
+        display: block;
+        width: 100% !important;
+    }
+
+    table.form-table tr,
+    .webdav-table tr {
+        margin-bottom: 0.75em;
+    }
+
+    table.form-table td,
+    .webdav-table td {
+        padding: 0.3em 0;
+    }
+
+    table.form-table td:first-child,
+    .webdav-table td:first-child {
+        padding-bottom: 0;
+        font-weight: 600;
+    }
+
+    table.form-table td textarea {
+        min-height: 8em;
+    }
+
+    .webdav-table td:first-child {
+        width: 100%;
+    }
+}
+
+@media (max-width: 360px) {
+    body.chrome-bootstrap {
+        width: calc(100% - 16px);
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    table.credential-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    table.credential-table tbody td.url,
+    table.credential-table tbody td.action {
+        grid-column: 1;
+    }
+
+    table.credential-table tbody td.password,
+    table.credential-table tbody td.priority {
+        grid-column: 1;
+    }
+
+    table.form-table td {
+        padding-left: 0;
+        padding-right: 0;
+    }
 }

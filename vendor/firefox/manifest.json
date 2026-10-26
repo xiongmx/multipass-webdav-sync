@@ -1,8 +1,14 @@
 {
+    "background": {
+        "scripts": ["js/extension.js"]
+    },
     "browser_specific_settings": {
         "gecko": {
-            "id": "multipass@gilles.crettenand.info",
-            "strict_min_version": "109.0"
+            "id": "multipass-webdav-sync@example.com",
+            "strict_min_version": "142.0",
+            "data_collection_permissions": {
+                "required": ["authenticationInfo", "browsingActivity"]
+            }
         }
     }
 }

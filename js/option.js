@@ -2,7 +2,9 @@
 
 var Credentials = require('./credentials');
 var CredentialStorage = require('./credential_storage');
+var Storage = require('./storage');
 var Translator = require('./translator');
+var WebDAVSync = require('./webdav_sync');
 
 var OptionPanel = function() {
     var credentials = [];
@@ -11,6 +13,21 @@ var OptionPanel = function() {
     var import_output;
     var import_file_field;
     var import_json_field;
+    var storage_status;
+
+    function show_storage_error() {
+        if(!storage_status) return;
+        storage_status.textContent = Translator.translate('storage_error') || 'Local storage failed. Your changes may not have been saved.';
+        storage_status.hidden = false;
+        storage_status.className = 'webdav-status error';
+    }
+
+    function clear_storage_error() {
+        if(!storage_status) return;
+        storage_status.textContent = '';
+        storage_status.hidden = true;
+        storage_status.className = 'webdav-status';
+    }
 
     function modal(title, content, confirmation) {
         var overlay = document.getElementsByClassName('overlay')[0].cloneNode(true);
@@ -29,8 +46,8 @@ var OptionPanel = function() {
 
         overlay.querySelector('.modal-confirm').addEventListener('click', confirmation);
 
-        overlay.querySelector('.overlay-title').innerHTML = title;
-        overlay.querySelector('.overlay-content').innerHTML = content;
+        overlay.querySelector('.overlay-title').textContent = title;
+        overlay.querySelector('.overlay-content').textContent = content;
 
         overlay.addEventListener('click', function () {
             overlay.querySelector('.page').classList.add('pulse');
@@ -52,13 +69,17 @@ var OptionPanel = function() {
         var display_credentials = credentials.concat(file_credentials);
 
         for (var key in display_credentials) {
-            if (display_credentials.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(display_credentials, key)) {
                 var c = Credentials.sanitize_credential(display_credentials[key]);
-                ul.innerHTML += '<li>' + c.url + ' : ' + c.username + ' - ' + c.password + ' - ' + c.priority + '</li>';
+                var item = document.createElement('li');
+                item.textContent = [c.url, ' : ', c.username, ' - ', c.password, ' - ', c.priority].map(function(value) {
+                    return value === null || typeof value === 'undefined' ? '' : String(value);
+                }).join('');
+                ul.appendChild(item);
             }
         }
 
-        import_output.innerHTML = '';
+        import_output.replaceChildren();
         import_output.appendChild(ul);
     }
 
@@ -69,7 +90,7 @@ var OptionPanel = function() {
             var json = JSON.parse(text);
 
             for (var key in json) {
-                if (json.hasOwnProperty(key)) {
+                if (Object.prototype.hasOwnProperty.call(json, key)) {
                     var c = json[key];
                     result.push(c);
                 }
@@ -106,26 +127,22 @@ var OptionPanel = function() {
 
     function import_credentials(e) {
         var new_credentials = credentials.concat(file_credentials);
-
-        for (var key in new_credentials) {
-            if (new_credentials.hasOwnProperty(key)) {
-                CredentialStorage.addCredential(new_credentials[key]);
-            }
-        }
-
-        credentials = [];
-        file_credentials = [];
-        import_output.innerHTML = '';
-        import_file_field.value = '';
-        import_json_field.value = '';
-
+        CredentialStorage.addCredentials(new_credentials).then(function() {
+            credentials = [];
+            file_credentials = [];
+            import_output.replaceChildren();
+            import_file_field.value = '';
+            import_json_field.value = '';
+        }).catch(function() {});
         e.preventDefault();
     }
 
     function restore_test_input() {
         var lis = document.querySelectorAll('#test-urls li');
         if(lis.length == 0) {
-            document.getElementById('test-urls').innerHTML = '<li>http://www.example.com</li>';
+            var item = document.createElement('li');
+            item.textContent = 'https://example.com';
+            document.getElementById('test-urls').replaceChildren(item);
         }
         test_regex();
     }
@@ -148,7 +165,10 @@ var OptionPanel = function() {
     }
 
     function clear_credentials(e) {
-        modal(Translator.translate('clear_credentials_modal_title'), Translator.translate('clear_credentials_modal_text'), CredentialStorage.clearAll);
+        modal(Translator.translate('clear_credentials_modal_title'), Translator.translate('clear_credentials_modal_text'), function(event) {
+            event.preventDefault();
+            CredentialStorage.clearAll().catch(function() {});
+        });
         e.preventDefault();
     }
 
@@ -156,6 +176,9 @@ var OptionPanel = function() {
         import_output = document.querySelector('output.import-list');
         import_file_field = document.getElementById('import-file');
         import_json_field = document.getElementById('import-json');
+        storage_status = document.getElementById('storage-status');
+        Storage.onError(show_storage_error);
+        Storage.onSuccess(clear_storage_error);
 
         import_file_field.addEventListener('change', import_file);
         import_json_field.addEventListener('change', import_json);
@@ -180,4 +203,5 @@ var OptionPanel = function() {
 document.addEventListener('DOMContentLoaded', function () {
     OptionPanel.init();
     Credentials.init();
+    WebDAVSync.init(CredentialStorage);
 });

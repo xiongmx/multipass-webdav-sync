@@ -1,7 +1,7 @@
-/*global chrome:True*/
 'use strict';
 
 var CredentialStorage = require('./credential_storage');
+var WebDAVSync = require('./webdav_sync');
 
 // the popin and option pane needs this to save the temporary item
 // window.Storage = require('./storage');
@@ -9,6 +9,8 @@ var CredentialStorage = require('./credential_storage');
 var Extension = function () {
     var statuses = {};
     var max_try = 5;
+    var manifestVersion = chrome.runtime.getManifest().manifest_version;
+    var toolbarAction = chrome[manifestVersion >= 3 ? 'action' : 'browserAction'];
 
     function showBadeForTab(tab) {
         showBadge(tab.id, tab.url);
@@ -23,7 +25,7 @@ var Extension = function () {
     }
 
     function showBadge(tab_id, url) {
-        var re = statuses.hasOwnProperty(tab_id) && statuses[tab_id].credentials.length > 0 ?
+        var re = Object.prototype.hasOwnProperty.call(statuses, tab_id) && statuses[tab_id].credentials.length > 0 ?
             new RegExp(statuses[tab_id].credentials[0].url) : false;
 
         if (re !== false && re.test(url)) {
@@ -32,10 +34,10 @@ var Extension = function () {
                 color = '#FF0000';
             }
 
-            chrome.action.setBadgeText({ text: ' ' });
-            chrome.action.setBadgeBackgroundColor({ color: color });
+            if(toolbarAction && toolbarAction.setBadgeText) toolbarAction.setBadgeText({ text: ' ' });
+            if(toolbarAction && toolbarAction.setBadgeBackgroundColor) toolbarAction.setBadgeBackgroundColor({ color: color });
         } else {
-            chrome.action.setBadgeText({text: ''});
+            if(toolbarAction && toolbarAction.setBadgeText) toolbarAction.setBadgeText({text: ''});
             delete statuses[tab_id];
         }
     }
@@ -43,7 +45,7 @@ var Extension = function () {
     function retrieveCredentials(status) {
         var credentials = CredentialStorage.getCredentials(status);
 
-        if(statuses.hasOwnProperty(status.tabId) && statuses[status.tabId].requestId == status.requestId) {
+        if(Object.prototype.hasOwnProperty.call(statuses, status.tabId) && statuses[status.tabId].requestId == status.requestId) {
             statuses[status.tabId].count += 1;
         } else {
             statuses[status.tabId] = {
@@ -62,7 +64,7 @@ var Extension = function () {
     }
 
     function suggester(status) {
-        if(statuses.hasOwnProperty(status.tabId)) {
+        if(Object.prototype.hasOwnProperty.call(statuses, status.tabId)) {
             if(statuses[status.tabId].credentials.length == 0) {
                 // no credentials found
             } else {
@@ -80,6 +82,7 @@ var Extension = function () {
     }
 
     function init() {
+        WebDAVSync.initBackground(CredentialStorage).catch(function() {});
         chrome.webRequest.onAuthRequired.addListener(retrieveCredentials, {urls: ['<all_urls>']}, ['blocking']);
 
         chrome.webRequest.onCompleted.addListener(suggester, {urls: ['<all_urls>']});
