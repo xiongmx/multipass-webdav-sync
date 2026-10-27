@@ -154,7 +154,7 @@ async function main() {
         try {
             await Sync.putRemote(settings, initialDocument, '');
         } catch(error) {
-            duplicateCreateRejected = /server rejected the conditional write/.test(error.message);
+            duplicateCreateRejected = /create-only If-None-Match/.test(error.message);
         }
         assert.strictEqual(duplicateCreateRejected, true, 'If-None-Match must prevent a duplicate first-create overwrite');
 

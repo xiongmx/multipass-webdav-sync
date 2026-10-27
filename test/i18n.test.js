@@ -62,6 +62,14 @@ assert.strictEqual(
     zhTranslator.translateText('Replace this device’s credentials with 4 entries from the encrypted WebDAV file? A local backup will be kept.'),
     '要用加密 WebDAV 文件中的 4 条凭据替换此设备上的凭据吗？本地备份会保留。'
 );
+assert.strictEqual(
+    zhTranslator.translateText('The initial read found no remote file, but the create-only If-None-Match request failed (HTTP 412). No unconditional write was attempted; the remote state may have changed, or the server may not support conditional writes. Check the remote file and server before retrying.'),
+    '首次读取未发现远端文件，但仅创建的 If-None-Match 条件请求失败（HTTP 412）。未尝试无条件写入；远端状态可能已变化，或服务器不支持条件写入。请检查远端文件和服务器后再重试。'
+);
+assert.strictEqual(
+    zhTranslator.translateText('The server returned the remote file, but did not provide a valid strong ETag. It will not be overwritten. Verify the file URL and ETag support.'),
+    '服务器返回了远端文件，但未提供有效强 ETag。为避免覆盖，该文件不会被更改。请核对文件 URL 和服务器的 ETag 支持。'
+);
 
 var fallbackTranslator = loadTranslator(function(key) { return key; });
 assert.strictEqual(fallbackTranslator.translate('webdav_title'), english.webdav_title.message, 'missing UI-language message must fall back to English');

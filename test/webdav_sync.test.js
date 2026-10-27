@@ -65,6 +65,8 @@ async function main() {
     assert.strictEqual(Sync.decideSync({ remoteExists: false, baselineEtag: '"old"' }), 'remote-deleted');
     assert.strictEqual(Sync.decideSync({ remoteExists: true, remoteEtag: '"new"', baselineEtag: '' }), 'first-connect');
     assert.strictEqual(Sync.decideSync({ remoteExists: true, remoteEtag: 'W/"weak"', baselineEtag: '"old"' }), 'missing-etag');
+    assert.strictEqual(Sync.decideSync({ remoteExists: true, remoteEtag: null, baselineEtag: '' }), 'missing-etag');
+    assert.strictEqual(Sync.decideSync({ remoteExists: true, remoteEtag: '*', baselineEtag: '' }), 'missing-etag', 'unquoted wildcard is not a strong entity tag');
     assert.strictEqual(Sync.decideSync(Object.assign({}, common, { baselineFingerprint: '' })), 'first-connect');
     assert.strictEqual(Sync.decideSync(Object.assign({}, common, { baselineRemoteDocumentHash: '' })), 'first-connect');
     assert.strictEqual(Sync.decideSync(Object.assign({}, common, { localFingerprint: 'changed-local' })), 'push');
@@ -111,6 +113,38 @@ async function main() {
         await rejects(Sync.parseSyncDocument(extraCredentialField), 'unknown credential fields');
         await rejects(Sync.parseSyncDocument(Object.assign({}, document, { credentials: [] })), 'invalid format');
 
+        global.fetch = function() {
+            return Promise.resolve({ status: 404, ok: false, headers: { get: function() { return null; } } });
+        };
+        var missingRemote = await Sync.readRemote({ endpoint: 'https://webdav.example.net/file' });
+        assert.strictEqual(missingRemote.exists, false, '404 means the remote file is missing');
+
+        var noEtagEnvelope = await testVault.encrypt(document, 'sync');
+        global.fetch = function() {
+            return Promise.resolve({
+                status: 200,
+                ok: true,
+                headers: { get: function() { return null; } },
+                text: function() { return Promise.resolve(JSON.stringify(noEtagEnvelope)); }
+            });
+        };
+        var existingWithoutEtag = await Sync.readRemote({ endpoint: 'https://webdav.example.net/file' });
+        assert.strictEqual(existingWithoutEtag.exists, true, 'a successful GET means the server reports an existing remote representation');
+        assert.strictEqual(existingWithoutEtag.etag, null, 'the missing strong ETag remains distinguishable from a missing resource');
+
+        global.fetch = function(url, options) {
+            requestOptions = options;
+            return Promise.resolve({ status: 201, ok: true, headers: { get: function(name) { return name === 'ETag' ? '"created"' : null; } } });
+        };
+        var createEtag = await Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '');
+        assert.strictEqual(createEtag, '"created"');
+        assert.strictEqual(requestOptions.headers['If-None-Match'], '*', 'a first push must use create-only If-None-Match');
+        assert.strictEqual(Object.prototype.hasOwnProperty.call(requestOptions.headers, 'If-Match'), false, 'a first push must not send an unconditional or update write');
+
+        global.fetch = function(url, options) {
+            requestOptions = options;
+            return Promise.resolve({ status: 201, ok: true, headers: { get: function(name) { return name === 'ETag' ? '"new"' : null; } } });
+        };
         var etag = await Sync.putRemote({
             endpoint: 'https://webdav.example.net/file', username: 'münchen', password: 'dav-pass'
         }, document, '"old"');
@@ -123,6 +157,12 @@ async function main() {
         assert.strictEqual(sentEnvelope.kind, 'sync');
         assert(!requestOptions.body.includes('fixture-only-password'), 'the server body must not contain the site password in plaintext');
 
+        var invalidEtagFetched = false;
+        global.fetch = function() { invalidEtagFetched = true; return Promise.reject(new Error('must not fetch')); };
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '*'), 'valid strong ETag');
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, null), 'valid strong ETag');
+        assert.strictEqual(invalidEtagFetched, false, 'an invalid existing-file validator must fail before any PUT');
+
         global.fetch = function() {
             return Promise.resolve({ status: 204, ok: true, headers: { get: function() { return null; } } });
         };
@@ -132,6 +172,13 @@ async function main() {
             return Promise.resolve({ status: 412, ok: false, headers: { get: function() { return null; } } });
         };
         await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '"old"'), 'server rejected the conditional write');
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, ''), 'initial read found no remote file');
+
+        global.fetch = function(url, options) {
+            assert.strictEqual(options.headers['If-None-Match'], '*');
+            return Promise.resolve({ status: 501, ok: false, headers: { get: function() { return null; } } });
+        };
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, ''), 'No unconditional write was attempted');
 
         global.fetch = function() {
             return Promise.resolve({

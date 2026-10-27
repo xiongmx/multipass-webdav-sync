@@ -507,12 +507,20 @@
         "message": "The server rejected the conditional write. Local data was retained; inspect both copies before syncing again.",
         "description": "User-visible extension UI message."
     },
+    "webdav_create_conditional_rejected": {
+        "message": "The initial read found no remote file, but the create-only If-None-Match request failed (HTTP $1). No unconditional write was attempted; the remote state may have changed, or the server may not support conditional writes. Check the remote file and server before retrying.",
+        "description": "User-visible extension UI message."
+    },
     "webdav_write_failed": {
         "message": "WebDAV write failed (HTTP $1).",
         "description": "User-visible extension UI message."
     },
     "webdav_write_missing_etag": {
         "message": "The server accepted the write but did not return a strong ETag. Sync status is unknown; inspect the remote file before retrying.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_create_write_missing_etag": {
+        "message": "The server accepted the create-only write but did not return a valid strong ETag. The remote file may now exist; no baseline was saved. Inspect it before retrying.",
         "description": "User-visible extension UI message."
     },
     "webdav_save_url_first": {
@@ -672,7 +680,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_strong_etag_overwrite": {
-        "message": "The WebDAV server must return a strong ETag. The existing remote file will not be overwritten.",
+        "message": "The server returned the remote file, but did not provide a valid strong ETag. It will not be overwritten. Verify the file URL and ETag support.",
         "description": "User-visible extension UI message."
     },
     "webdav_replace_confirm": {

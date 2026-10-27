@@ -507,12 +507,20 @@
         "message": "服务器拒绝了条件写入。本地数据已保留；再次同步前请检查两份副本。",
         "description": "User-visible extension UI message."
     },
+    "webdav_create_conditional_rejected": {
+        "message": "首次读取未发现远端文件，但仅创建的 If-None-Match 条件请求失败（HTTP $1）。未尝试无条件写入；远端状态可能已变化，或服务器不支持条件写入。请检查远端文件和服务器后再重试。",
+        "description": "User-visible extension UI message."
+    },
     "webdav_write_failed": {
         "message": "WebDAV 写入失败（HTTP $1）。",
         "description": "User-visible extension UI message."
     },
     "webdav_write_missing_etag": {
         "message": "服务器已接受写入，但没有返回强 ETag。同步状态未知；重试前请检查远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_create_write_missing_etag": {
+        "message": "服务器已接受仅创建的条件写入，但未返回有效强 ETag。远端文件现在可能已存在；未保存同步基线。重试前请先检查远端文件。",
         "description": "User-visible extension UI message."
     },
     "webdav_save_url_first": {
@@ -672,7 +680,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_strong_etag_overwrite": {
-        "message": "WebDAV 服务器必须返回强 ETag。现有远端文件不会被覆盖。",
+        "message": "服务器返回了远端文件，但未提供有效强 ETag。为避免覆盖，该文件不会被更改。请核对文件 URL 和服务器的 ETag 支持。",
         "description": "User-visible extension UI message."
     },
     "webdav_replace_confirm": {

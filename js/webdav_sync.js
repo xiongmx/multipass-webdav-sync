@@ -31,6 +31,10 @@ var WebDAVSync = function() {
     var Vault = null;
     var vaultObserversInstalled = false;
 
+    function isStrongEtag(etag) {
+        return typeof etag === 'string' && /^"[\x21\x23-\x7E\x80-\xFF]*"$/.test(etag);
+    }
+
     function vault() {
         if(Vault) return Vault;
         if(globalThis && globalThis.Vault) return (Vault = globalThis.Vault);
@@ -228,7 +232,7 @@ var WebDAVSync = function() {
 
     function decideSync(state) {
         if(!state.remoteExists) return state.baselineEtag ? 'remote-deleted' : 'create';
-        if(!state.remoteEtag || /^W\//i.test(state.remoteEtag)) return 'missing-etag';
+        if(!isStrongEtag(state.remoteEtag)) return 'missing-etag';
         if(!state.baselineEtag || !state.baselineFingerprint || !state.baselineRemoteRevision || !state.baselineRemoteDocumentHash ||
             !Number.isSafeInteger(state.baselineRemoteUpdatedAt)) return 'first-connect';
         if(state.remoteEtag === state.baselineEtag &&
@@ -365,17 +369,25 @@ var WebDAVSync = function() {
     }
 
     function putRemote(settings, document, etag) {
-        var condition = etag ? { name: 'If-Match', value: etag } : { name: 'If-None-Match', value: '*' };
+        var creating = etag === '';
+        if(!creating && !isStrongEtag(etag)) {
+            return Promise.reject(new Error('The server returned the remote file, but did not provide a valid strong ETag. It will not be overwritten. Verify the file URL and ETag support.'));
+        }
+        var condition = creating ? { name: 'If-None-Match', value: '*' } : { name: 'If-Match', value: etag };
         return vault().encrypt(document, 'sync').then(function(envelope) {
             return request(settings.endpoint, settings, 'PUT', JSON.stringify(envelope), condition);
         }).then(function(response) {
+            if(response.status === 401 || response.status === 403) throw new Error('WebDAV authentication failed. Check the endpoint username and password.');
+            if(creating && !response.ok) {
+                throw new Error('The initial read found no remote file, but the create-only If-None-Match request failed (HTTP ' + response.status + '). No unconditional write was attempted; the remote state may have changed, or the server may not support conditional writes. Check the remote file and server before retrying.');
+            }
             if(response.status === 412 || response.status === 409) {
                 throw new Error('The server rejected the conditional write. Local data was retained; inspect both copies before syncing again.');
             }
-            if(response.status === 401 || response.status === 403) throw new Error('WebDAV authentication failed. Check the endpoint username and password.');
             if(!response.ok) throw new Error('WebDAV write failed (HTTP ' + response.status + ').');
             var resultEtag = response.headers.get('ETag');
-            if(resultEtag && !/^W\//i.test(resultEtag)) return resultEtag;
+            if(isStrongEtag(resultEtag)) return resultEtag;
+            if(creating) throw new Error('The server accepted the create-only write but did not return a valid strong ETag. The remote file may now exist; no baseline was saved. Inspect it before retrying.');
             throw new Error('The server accepted the write but did not return a strong ETag. Sync status is unknown; inspect the remote file before retrying.');
         });
     }
@@ -436,7 +448,7 @@ var WebDAVSync = function() {
 
     function confirmWritten(settings, etag, expectedDocument) {
         return readRemote(settings).then(function(remote) {
-            if(!remote.exists || !remote.etag || /^W\//i.test(remote.etag) || remote.etag !== etag) {
+            if(!remote.exists || !isStrongEtag(remote.etag) || remote.etag !== etag) {
                 throw new Error('The remote write could not be confirmed with the returned strong ETag; no baseline was saved. Inspect the remote file before retrying.');
             }
             return parseSyncDocument(remote.document).then(function(document) {
@@ -462,7 +474,7 @@ var WebDAVSync = function() {
                         remoteDocument: null
                     };
                 }
-                if(!remote.etag || /^W\//i.test(remote.etag)) {
+                if(!isStrongEtag(remote.etag)) {
                     return {
                         action: 'missing-etag',
                         context: context,
@@ -741,7 +753,7 @@ var WebDAVSync = function() {
             return fingerprint(localBefore).then(function(localDigest) {
                 return readRemote(context.settings).then(function(remote) {
                     if(!remote.exists) throw new Error('There is no remote file to download.');
-                    if(!remote.etag || /^W\//i.test(remote.etag)) throw new Error('The WebDAV server must return a strong ETag before pulling.');
+                    if(!isStrongEtag(remote.etag)) throw new Error('The WebDAV server must return a strong ETag before pulling.');
                     return parseSyncDocument(remote.document).then(function(remoteDocument) {
                         var count = Object.keys(remoteDocument.credentials).length;
                         if(!window.confirm(Translator.translateText('Replace this device’s credentials with ' + count + ' entries from the encrypted WebDAV file? A local backup will be kept.'))) return;
@@ -770,8 +782,8 @@ var WebDAVSync = function() {
                     if(remote.exists && remote.legacy) {
                         if(!window.confirm(Translator.translateText('The remote file is legacy plaintext. Download/retain the local encrypted backup, then explicitly migrate it by replacing it with encrypted ciphertext? The legacy remote will not be preserved on the server.'))) return;
                     }
-                    if(remote.exists && (!remote.etag || /^W\//i.test(remote.etag))) {
-                        throw new Error('The WebDAV server must return a strong ETag. The existing remote file will not be overwritten.');
+                    if(remote.exists && !isStrongEtag(remote.etag)) {
+                        throw new Error('The server returned the remote file, but did not provide a valid strong ETag. It will not be overwritten. Verify the file URL and ETag support.');
                     }
                     var count = Object.keys(localCredentials).length;
                     var promptText = remote.exists ?
