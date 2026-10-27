@@ -3,6 +3,9 @@ MultiPass CHANGELOG
 
 VERSION 0 FIRST BLOOD
 ---------------------
+### Version 1.1.2 - 27/10/2026 - WebDAV fork identity and package metadata
+    Clarify the unofficial MultiPass WebDAV Sync fork, encrypted WebDAV synchronization, security limitations, platform status, privacy-policy URL, and 1.1.2 package metadata.
+
 
 ### Version 1.0.0 - 26/12/2023 - Update to Manifest v3 
     1.0.0	26/12/2023		Update to Manifest v3

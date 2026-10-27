@@ -1,9 +1,9 @@
 {
     "extName": {
-        "message": "MultiPass voor HTTP basic authenticatie"
+        "message": "MultiPass WebDAV Sync"
     },
     "extDescription": {
-        "message": "Log automatisch in via Basic Authenticatie doormiddel van een URL reguliere expressie."
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication."
     },
     "credentials_section": {
         "message": "Inloggegevens"
@@ -89,7 +89,6 @@
     "clear_button": {
         "message": "Wis alle gegevens"
     },
-
     "open_option_page": {
         "message": "Open de opties pagina."
     },

@@ -1,9 +1,9 @@
 {
     "extName": {
-        "message": "MultiPass para autenticação básica HTTP"
+        "message": "MultiPass WebDAV Sync"
     },
     "extDescription": {
-        "message": "Faça o login automático de autenticação básica HTTP usando uma expressão regular de URL."
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication."
     },
     "credentials_section": {
         "message": "Credenciais"

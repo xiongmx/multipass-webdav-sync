@@ -4,7 +4,7 @@
 
 这是基于 [MultiPass for HTTP Basic Authentication](https://github.com/krtek4/MultiPass) 的非官方 fork，发布者为 **xiongmx**。上游项目不是本 fork 的发布者；保留上游 WTFPL v2 署名与许可信息。
 
-[English](README.md) · [隐私政策](privacy-policy.html)
+[English](README.md) · [隐私政策](https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html)
 
 ## 使用方式
 
@@ -17,7 +17,7 @@
 
 ## 保险库与同步
 
-1.1.1 版本使用 AES-GCM-256，配合随机 16 字节 salt 和 12 字节 IV。保险库密码先经 SHA-256 处理，再作为 PBKDF2-HMAC-SHA-256 的输入，迭代 600,000 次。原始保险库密码不保存，也不会发送给 WebDAV 服务。口令派生的根材料仅保留于受信任扩展上下文的会话存储中；重启浏览器后保险库会锁定。
+1.1.2 版本使用 AES-GCM-256，配合随机 16 字节 salt 和 12 字节 IV。保险库密码先经 SHA-256 处理，再作为 PBKDF2-HMAC-SHA-256 的输入，迭代 600,000 次。原始保险库密码不保存，也不会发送给 WebDAV 服务。口令派生的根材料仅保留于受信任扩展上下文的会话存储中；重启浏览器后保险库会锁定。
 
 本地凭据规则、WebDAV 账号资料、临时值、备份、同步元数据、JSON 导出及 WebDAV 同步文件均由扩展加密。WebDAV 服务仍会收到其自身账号的授权信息，并可观察端点、请求时间和大小及 ETag 等元数据。ETag 和哈希用于检测变化与冲突，不是加密，也不能阻止恶意回滚。
 
@@ -55,7 +55,7 @@ npm run test:webdav-e2e
 
 ## 隐私、支持与许可
 
-扩展没有分析、广告、遥测、开发者自建数据收集端点或浏览器账号同步服务。数据处理、控制方式和限制详见[隐私政策](privacy-policy.html)。
+扩展没有分析、广告、遥测、开发者自建数据收集端点或浏览器账号同步服务。数据处理、控制方式和限制详见[隐私政策](https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html)。
 
 支持及隐私联系邮箱：[multipass@xiongmx.com](mailto:multipass@xiongmx.com)。
 

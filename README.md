@@ -4,7 +4,7 @@ HTTPS-only HTTP Basic authentication using URL rules, with an encrypted local va
 
 This is an unofficial fork of [MultiPass for HTTP Basic Authentication](https://github.com/krtek4/MultiPass), published by **xiongmx**. The upstream project is not the publisher of this fork. The upstream WTFPL v2 attribution is retained.
 
-[中文说明](README.zh-CN.md) · [Privacy policy](privacy-policy.html)
+[中文说明](README.zh-CN.md) · [Privacy policy](https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html)
 
 ## Use
 
@@ -17,7 +17,7 @@ HTTP websites, proxy-authentication challenges, and non-Basic authentication cha
 
 ## Vault and synchronization
 
-Version 1.1.1 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. The chosen vault password is first processed with SHA-256 and then used as input to PBKDF2-HMAC-SHA-256 with 600,000 iterations. The original vault password is not stored or sent to WebDAV. Password-derived root material is held in trusted extension session storage; restarting the browser locks the vault.
+Version 1.1.2 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. The chosen vault password is first processed with SHA-256 and then used as input to PBKDF2-HMAC-SHA-256 with 600,000 iterations. The original vault password is not stored or sent to WebDAV. Password-derived root material is held in trusted extension session storage; restarting the browser locks the vault.
 
 Local credential rules, WebDAV account values, temporary values, backups, synchronization metadata, JSON exports, and WebDAV synchronization files are encrypted. The WebDAV provider still receives its own account authorization and can observe the endpoint, request timing and size, and metadata such as ETags. ETags and hashes detect changes and conflicts; they are not encryption and do not prevent a malicious rollback.
 
@@ -55,7 +55,7 @@ The integration-test adapter maps a fixed synthetic HTTPS localhost URL to a tem
 
 ## Privacy, support, and license
 
-The extension has no analytics, advertising, telemetry, developer-operated collection endpoint, or browser-account synchronization service. See the [privacy policy](privacy-policy.html) for data handling, controls, and limitations.
+The extension has no analytics, advertising, telemetry, developer-operated collection endpoint, or browser-account synchronization service. See the [privacy policy](https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html) for data handling, controls, and limitations.
 
 For support or privacy questions: [multipass@xiongmx.com](mailto:multipass@xiongmx.com).
 

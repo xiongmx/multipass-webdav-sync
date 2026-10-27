@@ -1,15 +1,13 @@
 {
     "extName": {
-        "message": "MultiPass pour authentification HTTP basique"
+        "message": "MultiPass WebDAV Sync"
     },
     "extDescription": {
-        "message": "Connexion automatique à une authentification HTTP basique en utilisant des données basées sur une expression régulière pour l'URL."
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication."
     },
-
     "credentials_section": {
         "message": "Information de connexion"
     },
-
     "url_regexp": {
         "message": "URL (regexp)"
     },
@@ -37,21 +35,18 @@
     "clear_credential": {
         "message": "Vider"
     },
-
     "clear_credentials_modal_title": {
         "message": "Supprimer toutes les entrées"
     },
     "clear_credentials_modal_text": {
         "message": "Êtes-vous sûr de vouloir supprimer toutes les entrées ?"
     },
-
     "modal_cancel": {
         "message": "Annuler"
     },
     "modal_yes": {
         "message": "Oui"
     },
-
     "test_section": {
         "message": "Testez votre expression régulière"
     },
@@ -61,7 +56,6 @@
     "tested_urls": {
         "message": "URLs sur lesquelles tester:"
     },
-
     "import_section": {
         "message": "Importer"
     },
@@ -83,25 +77,21 @@
     "import_submit": {
         "message": "Importer"
     },
-
     "export_section": {
         "message": "Exporter"
     },
     "export_button": {
         "message": "Télécharger les données au format JSON."
     },
-
     "clear_section": {
         "message": "Supprimer toutes les entrées"
     },
     "clear_button": {
         "message": "Supprimer toutes les entrées"
     },
-
     "open_option_page": {
         "message": "Ouvrir la page des préférences."
     },
-
     "donate": {
         "message": "Vous aimez cette extension ? Un petit geste est toujours le bienvenu:"
     }

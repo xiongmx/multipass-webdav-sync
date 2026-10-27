@@ -1,9 +1,9 @@
 {
     "extName": {
-        "message": "MultiPass per l'autenticazione HTTP di base"
+        "message": "MultiPass WebDAV Sync"
     },
     "extDescription": {
-        "message": "Connessione automatica ad una autenticazione di base HTTP utilizzando dati basati su URL definite da espressioni regolari"
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication."
     },
     "credentials_section": {
         "message": "Credenziali"
@@ -87,9 +87,8 @@
         "message": "Svuota tutte le credenziali"
     },
     "clear_button": {
-      "message": "Svuota tutte le credenziali"
+        "message": "Svuota tutte le credenziali"
     },
-
     "open_option_page": {
         "message": "Apri la pagina delle opzioni"
     },

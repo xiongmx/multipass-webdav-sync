@@ -1,18 +1,16 @@
 {
     "extName": {
-        "message": "MultiPass for HTTP basic authentication",
+        "message": "MultiPass WebDAV Sync",
         "description": "Name of the extension"
     },
     "extDescription": {
-        "message": "Automatically login to Basic Authentication using data based on URL regexp.",
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication.",
         "description": "Description of the extension"
     },
-
     "credentials_section": {
         "message": "Credentials",
         "description": "Credential section title in option pane"
     },
-
     "url_regexp": {
         "message": "Url (regexp)",
         "description": "Url table header"
@@ -49,7 +47,6 @@
         "message": "Clear",
         "description": "Button to clear current credential"
     },
-
     "clear_credentials_modal_title": {
         "message": "Clear all credentials",
         "description": "Modal message title when clearing credentials"
@@ -58,7 +55,6 @@
         "message": "Are you sure you want to remove all credentials?",
         "description": "Modal message text when clearing credentials"
     },
-
     "modal_cancel": {
         "message": "Cancel",
         "description": "Cancel button in the modal"
@@ -67,7 +63,6 @@
         "message": "Yes",
         "description": "Yes button in the modal"
     },
-
     "test_section": {
         "message": "Test your regex",
         "description": "Test section title"
@@ -80,7 +75,6 @@
         "message": "URLs under test:",
         "description": "Title near the list of tested regex."
     },
-
     "import_section": {
         "message": "Import",
         "description": "Import section title"
@@ -109,7 +103,6 @@
         "message": "Import",
         "description": "Import button"
     },
-
     "export_section": {
         "message": "Export",
         "description": "Export section title"
@@ -118,7 +111,6 @@
         "message": "Download credentials as JSON file.",
         "description": "Export button"
     },
-
     "clear_section": {
         "message": "Clear all credentials",
         "description": "Clear credentials section title"
@@ -127,12 +119,10 @@
         "message": "Clear all credentials",
         "description": "Clear credentials button before confirmation"
     },
-
     "open_option_page": {
         "message": "Open the option page.",
         "description": "Open the option page link"
     },
-
     "donate": {
         "message": "Like the extension? A small donation would be really nice:",
         "description": "Text accompanying the donation button"

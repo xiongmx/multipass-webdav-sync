@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Multipass - Easy Basic Authentication</title>
+    <title>MultiPass WebDAV Sync - Unofficial WebDAV Fork</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css?v=1">
     <link rel="stylesheet" href="stylesheets/pygment_trac.css">
@@ -15,62 +15,52 @@
 <body>
 <div class="wrapper">
     <header>
-        <h1>Multipass</h1>
-        <p>Do not bother with Basic Authentication ever again !</p>
+        <h1>MultiPass WebDAV Sync</h1>
+        <p>Unofficial independent fork with encrypted WebDAV synchronization.</p>
 
         <ul>
             <li>
-                <a href="https://chrome.google.com/webstore/detail/multipass-for-http-basic/enhldmjbphoeibbpdhmjkchohnidgnah">
-                    <strong>Chrome web store</strong>
+                <a href="https://github.com/xiongmx/multipass-webdav-sync">
+                    <strong>WebDAV fork<br>Source</strong>
                 </a>
             </li>
             <li>
-                <a href="https://addons.opera.com/en/extensions/details/multipass/">
-                    <strong>Opera <br>Add-on</strong>
+                <a href="https://github.com/xiongmx/multipass-webdav-sync#use">
+                    <strong>Build and<br>Install</strong>
                 </a>
             </li>
             <li>
-                <a href="https://addons.mozilla.org/en-US/firefox/addon/multipass/">
-                    <strong>Firefox <br>Add-on</strong>
+                <a href="https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html">
+                    <strong>Privacy<br>Policy</strong>
                 </a>
             </li>
         </ul>
 
-        <p class="view"><a href="https://github.com/krtek4/MultiPass/releases/latest">Latest release</a></p>
-
-        <p class="view"><a href="https://github.com/krtek4/MultiPass">View on GitHub</a></p>
-        <p class="view"><a href="https://github.com/krtek4/MultiPass/issues">Report an issue</a></p>
+        <p class="view"><a href="https://github.com/xiongmx/multipass-webdav-sync">View this fork on GitHub</a></p>
+        <p class="view"><a href="https://github.com/xiongmx/multipass-webdav-sync/issues">Report an issue with this fork</a></p>
     </header>
 
     <section>
-        <h1>Easy basic authentication</h1>
+        <h1>MultiPass WebDAV Sync</h1>
 
-        <p>This extension allows you to register credential associated to a regular expression.</p>
+        <p>MultiPass WebDAV Sync is an unofficial, independently maintained fork of MultiPass that adds optional, client-side-encrypted synchronization through your own HTTPS WebDAV server. This WebDAV-sync-enabled version is separate from the original MultiPass extension and is not an official Microsoft product.</p>
+        <p>It stores HTTPS HTTP Basic authentication rules in an encrypted local vault.</p>
 
         <p>When you browse a website that requires HTTP basic authentication, if the URL match against one of
            the regular expression, the credentials will be automatically sent.</p>
 
-        <p>No more cumbersome login popin, everything is done in the background.</p>
+        <p>HTTP websites, proxy-authentication challenges, and non-Basic challenges are rejected. The WebDAV provider can still see its account authorization, endpoint, request timing and size, and metadata such as ETags.</p>
+        <p>The extension has not been independently security-audited. The primary package targets Chromium Manifest V3; Edge Android Stable has not been verified on a real device and Android support is not claimed. Firefox and Firefox for Android builds are experimental.</p>
+        <p><a href="https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html">Privacy policy</a> · <a href="https://github.com/xiongmx/multipass-webdav-sync">Source repository</a></p>
 
-        <h2>Chrome web store</h2>
+        <h2>Installation and store status</h2>
 
-        <p>The extension is available on the Chrome web store:
-           <a href="https://chrome.google.com/webstore/detail/multipass-for-http-basic/enhldmjbphoeibbpdhmjkchohnidgnah">MultiPass for HTTP basic authentication</a>.</p>
-
-        <h2>Opera add-ons</h2>
-
-        <p>The extension is available as an Opera add-on:
-            <a href="https://addons.opera.com/en/extensions/details/multipass/">MultiPass</a>.</p>
-
-        <h2>Firefox Add-ons</h2>
-
-        <p>The extension is available as a Firefox add-on:
-            <a href="https://addons.mozilla.org/en-US/firefox/addon/multipass/">MultiPass</a>.</p>
+        <p>The original project's store listings are not this WebDAV-enabled version. Use packages built from this repository for desktop evaluation; this page does not claim store publication or approval.</p>
 
         <h2>Report an issue</h2>
 
         <p>If you want to report an issue, use the Github issue tracker:
-           <a href="https://github.com/krtek4/MultiPass/issues">MultiPass issues</a>.</p>
+           <a href="https://github.com/xiongmx/multipass-webdav-sync/issues">MultiPass WebDAV Sync issues</a>.</p>
 
         <p>Please make sure the issue is not already opened.</p>
 
@@ -79,9 +69,9 @@
         <p>If you want to use the development version, follow those steps :</p>
 
         <ol>
-            <li>Clone the github repository : <code>git clone git@github.com:krtek4/MultiPass.git</code>.</li>
-            <li>Enter the directory : <code>cd MultiPass</code>.</li>
-            <li>Install dependencies : <code>npm install</code>.</li>
+            <li>Clone this fork : <code>git clone --branch webdav-sync-draft https://github.com/xiongmx/multipass-webdav-sync.git</code>.</li>
+            <li>Enter the directory : <code>cd multipass-webdav-sync</code>.</li>
+            <li>Install dependencies : <code>npm ci</code>.</li>
             <li>Build the extension : <code>npm run build</code>.</li>
             <li>Open the Extension panel in Chrome : Tools / Extensions.</li>
             <li>Make sure the "Developer mode" checkbox is checked.</li>
@@ -102,7 +92,7 @@
     </section>
 
     <footer>
-        <p>This project is maintained by <a href="https://github.com/krtek4">Gilles "krtek4" Crettenand</a></p>
+        <p>This unofficial fork is published by <a href="https://github.com/xiongmx">xiongmx</a>; original upstream author: <a href="https://github.com/krtek4">Gilles "krtek4" Crettenand</a></p>
         <p><small>Hosted on GitHub Pages</small></p>
         <p><small>Based on theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
     </footer>
@@ -110,7 +100,7 @@
 
 <script src="javascripts/scale.fix.js"></script>
 
-<a href="https://github.com/krtek4/MultiPass"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
+<a href="https://github.com/xiongmx/multipass-webdav-sync"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="View this WebDAV fork on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
 
 </body>
 </html>

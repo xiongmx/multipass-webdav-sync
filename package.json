@@ -1,7 +1,7 @@
 {
-  "name": "MultiPass",
+  "name": "multipass-webdav-sync",
   "private": true,
-  "description": "HTTPS-only Basic authentication with an encrypted vault and encrypted WebDAV sync.",
+  "description": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication.",
   "contributors": [
     "Gilles Crettenand (original upstream author)"
   ],
@@ -29,5 +29,6 @@
     "gulp-zip": "^6.1.0",
     "gulplog": "^2.0.1",
     "webpack-stream": "^7.0.0"
-  }
+  },
+  "version": "1.1.2"
 }

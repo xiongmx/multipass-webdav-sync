@@ -10,10 +10,10 @@ var webcrypto = require('crypto').webcrypto;
 
 var root = path.resolve(__dirname, '..');
 var packages = [
-    'dist/chrome-multipass-1.1.0.zip',
-    'dist/firefox-multipass-1.1.0.xpi',
-    'dist/opera-multipass-1.1.0.zip',
-    'dist/firefox-android-multipass-1.1.0.xpi'
+    'dist/chrome-multipass-1.1.2.zip',
+    'dist/firefox-multipass-1.1.2.xpi',
+    'dist/opera-multipass-1.1.2.zip',
+    'dist/firefox-android-multipass-1.1.2.xpi'
 ];
 var CONFIG_KEY = 'vaultConfig';
 var VALUES_KEY = 'vaultEncryptedValues';
@@ -39,6 +39,10 @@ function packageFiles(packagePath) {
 
 function assertManifestPolicy(packagePath) {
     var manifest = JSON.parse(unzipText(packagePath, 'manifest.json'));
+    assert.strictEqual(manifest.version, '1.1.2', packagePath + ' manifest version');
+    assert.strictEqual(manifest.short_name, 'MP WebDAV', packagePath + ' manifest short_name');
+    assert.strictEqual(manifest.name, '__MSG_extName__', packagePath + ' manifest name');
+    assert.strictEqual(manifest.description, '__MSG_extDescription__', packagePath + ' manifest description');
     assert((manifest.permissions || []).includes('alarms'), packagePath + ' must declare alarms for periodic sync');
     if (Object.prototype.hasOwnProperty.call(manifest, 'host_permissions')) {
         assert.deepStrictEqual(manifest.host_permissions, ['https://*/*'], packagePath + ' host_permissions');

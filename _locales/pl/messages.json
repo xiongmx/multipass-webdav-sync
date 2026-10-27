@@ -1,15 +1,13 @@
 {
     "extName": {
-        "message": "MultiPass dla uwierzytelniania HTTP basic authentication"
+        "message": "MultiPass WebDAV Sync"
     },
     "extDescription": {
-        "message": "Automatyczne logowanie z wykorzystaniem Basic Authentication na adresy URL stron podanych w wyrażeniu regularnym."
+        "message": "Unofficial MultiPass fork with encrypted WebDAV sync for HTTPS Basic authentication."
     },
-
     "credentials_section": {
         "message": "Dane logowania"
     },
-
     "url_regexp": {
         "message": "Adres URL (wyrażenie regularne)"
     },
@@ -37,21 +35,18 @@
     "clear_credential": {
         "message": "Wyczyść"
     },
-
     "clear_credentials_modal_title": {
         "message": "Wyczyść wszystkie dane logowania"
     },
     "clear_credentials_modal_text": {
         "message": "Czy na pewno chcesz usunąć wszystkie zapisane dane?"
     },
-
     "modal_cancel": {
         "message": "Anuluj"
     },
     "modal_yes": {
         "message": "Tak"
     },
-
     "test_section": {
         "message": "Sprawdź poprawność wyrażenia regularnego"
     },
@@ -61,7 +56,6 @@
     "tested_urls": {
         "message": "Adresy URL do sprawdzenia:"
     },
-
     "import_section": {
         "message": "Importuj"
     },
@@ -83,25 +77,21 @@
     "import_submit": {
         "message": "Importuj"
     },
-
     "export_section": {
         "message": "Eksportuj"
     },
     "export_button": {
         "message": "Pobierz dane logowania w formacie JSON."
     },
-
     "clear_section": {
         "message": "Wyczyść wszystkie dane logowania"
     },
     "clear_button": {
         "message": "Wyczyść wszystkie dane logowania"
     },
-
     "open_option_page": {
         "message": "Otwórz stronę z ustawieniami."
     },
-
     "donate": {
         "message": "Lubisz te rozszerzenie? Byłoby fajnie gdybyś zostawił jakąś małą dotację:"
     }
