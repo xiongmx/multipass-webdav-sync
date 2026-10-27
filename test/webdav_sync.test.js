@@ -4,6 +4,7 @@ var assert = require('assert');
 if(!globalThis.crypto) globalThis.crypto = require('crypto').webcrypto;
 
 var refuseSecretUse = false;
+var testVaultData = Object.create(null);
 var testVault = {
     isUnlocked: function() { return true; },
     verifyUnlocked: function() { return refuseSecretUse ? Promise.reject(new Error('Vault is locked.')) : Promise.resolve(); },
@@ -11,9 +12,14 @@ var testVault = {
         return Promise.resolve({ format: 'multipass-vault-v1', kind: kind, parameters: { cipher: 'AES-GCM-256', kdf: 'PBKDF2-SHA256', iterations: 600000, saltBytes: 16, ivBytes: 12 }, salt: 'AAAAAAAAAAAAAAAAAAAAAA==', iv: 'AAAAAAAAAAAAAAAA', ciphertext: Buffer.from(JSON.stringify(value), 'utf8').toString('base64') });
     },
     decrypt: function(envelope) { return Promise.resolve(JSON.parse(Buffer.from(envelope.ciphertext, 'base64').toString('utf8'))); },
-    getAsync: function(key, fallback) { return Promise.resolve(fallback); },
-    setAsync: function() { return Promise.resolve(); },
-    removeAsync: function() { return Promise.resolve(); }
+    getAsync: function(key, fallback) { return Promise.resolve(Object.prototype.hasOwnProperty.call(testVaultData, key) ? testVaultData[key] : fallback); },
+    setAsync: function(key, value) { testVaultData[key] = value; return Promise.resolve(); },
+    removeAsync: function(keys) {
+        (Array.isArray(keys) ? keys : [keys]).forEach(function(key) { delete testVaultData[key]; });
+        return Promise.resolve();
+    },
+    onLock: function() {},
+    onUnlock: function() {}
 };
 require.cache[require.resolve('../js/vault')] = { id: require.resolve('../js/vault'), filename: require.resolve('../js/vault'), loaded: true, exports: testVault };
 var Sync = require('../js/webdav_sync');
@@ -25,6 +31,112 @@ function rejects(promise, message) {
         assert(error instanceof Error);
         if(message) assert(error.message.indexOf(message) !== -1, error.message);
     });
+}
+
+function mockResponse(status, etag, body) {
+    return {
+        status: status,
+        ok: status >= 200 && status < 300,
+        headers: { get: function(name) { return name === 'ETag' ? (etag || null) : null; } },
+        text: function() { return Promise.resolve(body); }
+    };
+}
+
+async function assertReadbackFailure(syncDocument, etag, makeReadback, expectedMessage, putEtag) {
+    var putCount = 0;
+    var getCount = 0;
+    var body;
+    global.fetch = function(url, options) {
+        if(options.method === 'PUT') {
+            putCount++;
+            body = options.body;
+            return Promise.resolve(mockResponse(201, putEtag || null));
+        }
+        getCount++;
+        return makeReadback(body);
+    };
+    await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, syncDocument, etag), expectedMessage);
+    assert.strictEqual(putCount, 1, 'an accepted PUT must never be repeated after uncertain read-back');
+    assert.strictEqual(getCount, 1, 'an uncertain write must perform only the immediate verification GET');
+}
+
+function fakeElement(value) {
+    return {
+        value: value || '',
+        checked: false,
+        disabled: false,
+        textContent: '',
+        className: '',
+        listeners: Object.create(null),
+        addEventListener: function(name, callback) { this.listeners[name] = callback; }
+    };
+}
+
+async function assertFailedManualPushDoesNotSaveBaseline(remoteExists, readbackFailure) {
+    Object.keys(testVaultData).forEach(function(key) { delete testVaultData[key]; });
+    var endpoint = 'https://webdav.example.net/file';
+    testVaultData.multipassWebdavSettings = {
+        endpoint: endpoint, username: '', password: '', autoSyncIntervalMinutes: 0, consentVersion: 1
+    };
+    testVaultData.multipassWebdavSyncMeta = {};
+    var elements = {
+        'webdav-status': fakeElement(),
+        'webdav-pull': fakeElement(),
+        'webdav-push': fakeElement(),
+        'webdav-backup': fakeElement(),
+        'webdav-save': fakeElement(),
+        'webdav-sync': fakeElement(),
+        'webdav-interval': fakeElement('0'),
+        'webdav-url': fakeElement(endpoint),
+        'webdav-username': fakeElement(''),
+        'webdav-password': fakeElement(''),
+        'webdav-consent': fakeElement()
+    };
+    elements['webdav-consent'].checked = true;
+    global.document = { getElementById: function(id) { return elements[id] || null; } };
+    global.window = { confirm: function() { return true; } };
+    global.chrome = {
+        runtime: { lastError: null },
+        storage: { onChanged: { addListener: function() {} } },
+        alarms: {
+            create: function() { return Promise.resolve(); },
+            clear: function(name, callback) { if(callback) callback(true); return Promise.resolve(true); },
+            get: function(name, callback) { if(callback) callback(null); return Promise.resolve(null); }
+        }
+    };
+    var localCredentials = {
+        'https://local.example.net/': {
+            url: 'https://local.example.net/', username: 'local-user', password: 'local-password', priority: '1'
+        }
+    };
+    var oldDocument = await Sync.createSyncDocument({
+        'https://remote.example.net/': {
+            url: 'https://remote.example.net/', username: 'remote-user', password: 'remote-password', priority: '1'
+        }
+    }, Date.now() - 1000);
+    var oldEnvelope = await testVault.encrypt(oldDocument, 'sync');
+    var putCount = 0;
+    var getCount = 0;
+    var putBody = '';
+    global.fetch = function(url, options) {
+        if(options.method === 'PUT') {
+            putCount++;
+            putBody = options.body;
+            return Promise.resolve(mockResponse(201, null));
+        }
+        getCount++;
+        if(remoteExists && getCount === 1) return Promise.resolve(mockResponse(200, '"before-write"', JSON.stringify(oldEnvelope)));
+        if(!remoteExists && getCount === 1) return Promise.resolve(mockResponse(404, null, ''));
+        if(readbackFailure === 'mismatch') return Promise.resolve(mockResponse(200, '"after-write"', putBody + ' '));
+        return Promise.resolve(mockResponse(503, null, ''));
+    };
+    Sync.init({ asJSON: function() { return JSON.stringify(localCredentials); } });
+    elements['webdav-push'].listeners.click();
+    await new Promise(function(resolve) { setTimeout(resolve, 10); });
+    assert.strictEqual(putCount, 1, 'manual push must not repeat a PUT after an uncertain read-back');
+    assert.strictEqual(getCount, 2, 'each push performs an initial read plus one follow-up verification GET');
+    assert.deepStrictEqual(testVaultData.multipassWebdavSyncMeta, {}, 'an unconfirmed manual push must not create or advance a sync baseline');
+    assert(elements['webdav-status'].textContent.indexOf('sync status is unknown') !== -1, elements['webdav-status'].textContent);
 }
 
 async function main() {
@@ -132,23 +244,39 @@ async function main() {
         assert.strictEqual(existingWithoutEtag.exists, true, 'a successful GET means the server reports an existing remote representation');
         assert.strictEqual(existingWithoutEtag.etag, null, 'the missing strong ETag remains distinguishable from a missing resource');
 
+        var createPutBody;
+        var createRequests = [];
         global.fetch = function(url, options) {
-            requestOptions = options;
-            return Promise.resolve({ status: 201, ok: true, headers: { get: function(name) { return name === 'ETag' ? '"created"' : null; } } });
+            createRequests.push(options.method);
+            if(options.method === 'PUT') {
+                requestOptions = options;
+                createPutBody = options.body;
+                return Promise.resolve(mockResponse(201, null));
+            }
+            return Promise.resolve(mockResponse(200, '"created-readback"', createPutBody));
         };
         var createEtag = await Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '');
-        assert.strictEqual(createEtag, '"created"');
+        assert.strictEqual(createEtag, '"created-readback"', 'a create-only PUT without ETag may proceed only with exact-body read-back and a strong ETag');
+        assert.deepStrictEqual(createRequests, ['PUT', 'GET']);
         assert.strictEqual(requestOptions.headers['If-None-Match'], '*', 'a first push must use create-only If-None-Match');
         assert.strictEqual(Object.prototype.hasOwnProperty.call(requestOptions.headers, 'If-Match'), false, 'a first push must not send an unconditional or update write');
 
+        var updatePutBody;
+        var updateRequests = [];
         global.fetch = function(url, options) {
-            requestOptions = options;
-            return Promise.resolve({ status: 201, ok: true, headers: { get: function(name) { return name === 'ETag' ? '"new"' : null; } } });
+            updateRequests.push(options.method);
+            if(options.method === 'PUT') {
+                requestOptions = options;
+                updatePutBody = options.body;
+                return Promise.resolve(mockResponse(201, null));
+            }
+            return Promise.resolve(mockResponse(200, '"new-readback"', updatePutBody));
         };
         var etag = await Sync.putRemote({
             endpoint: 'https://webdav.example.net/file', username: 'münchen', password: 'dav-pass'
         }, document, '"old"');
-        assert.strictEqual(etag, '"new"');
+        assert.strictEqual(etag, '"new-readback"', 'an existing-file PUT without ETag may proceed only with exact-body read-back and a strong ETag');
+        assert.deepStrictEqual(updateRequests, ['PUT', 'GET']);
         assert.strictEqual(requestOptions.headers['Content-Type'], 'application/json; charset=utf-8');
         assert.strictEqual(Buffer.from(requestOptions.headers.Authorization.slice(6), 'base64').toString('utf8'), 'münchen:dav-pass');
         assert.strictEqual(requestOptions.headers['If-Match'], '"old"');
@@ -156,6 +284,38 @@ async function main() {
         assert.strictEqual(sentEnvelope.format, 'multipass-vault-v1');
         assert.strictEqual(sentEnvelope.kind, 'sync');
         assert(!requestOptions.body.includes('fixture-only-password'), 'the server body must not contain the site password in plaintext');
+
+        var strongPutBody;
+        global.fetch = function(url, options) {
+            if(options.method === 'PUT') {
+                strongPutBody = options.body;
+                return Promise.resolve(mockResponse(201, '"put-etag"'));
+            }
+            return Promise.resolve(mockResponse(200, '"put-etag"', strongPutBody));
+        };
+        assert.strictEqual(await Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '"old"'), '"put-etag"', 'a strong PUT ETag still requires exact read-back confirmation');
+
+        await assertReadbackFailure(document, '', function(body) {
+            return Promise.resolve(mockResponse(200, '"mismatch-create"', body + ' '));
+        }, 'exactly match');
+        await assertReadbackFailure(document, '"old"', function(body) {
+            return Promise.resolve(mockResponse(200, '"mismatch-update"', body + ' '));
+        }, 'exactly match');
+        await assertReadbackFailure(document, '"old"', function(body) {
+            return Promise.resolve(mockResponse(200, '"readback-etag"', body));
+        }, 'did not match the PUT response', '"put-etag"');
+        await assertReadbackFailure(document, '', function(body) {
+            return Promise.resolve(mockResponse(200, 'W/"weak"', body));
+        }, 'valid strong ETag');
+        await assertReadbackFailure(document, '"old"', function(body) {
+            return Promise.resolve(mockResponse(200, null, body));
+        }, 'valid strong ETag');
+        await assertReadbackFailure(document, '', function() {
+            return Promise.resolve(mockResponse(500, null, ''));
+        }, 'follow-up GET failed');
+        await assertReadbackFailure(document, '"old"', function() {
+            return Promise.reject(new Error('network unavailable'));
+        }, 'follow-up GET failed');
 
         var invalidEtagFetched = false;
         global.fetch = function() { invalidEtagFetched = true; return Promise.reject(new Error('must not fetch')); };
@@ -166,7 +326,7 @@ async function main() {
         global.fetch = function() {
             return Promise.resolve({ status: 204, ok: true, headers: { get: function() { return null; } } });
         };
-        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '"old"'), 'Sync status is unknown');
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '"old"'), 'sync status is unknown');
 
         global.fetch = function() {
             return Promise.resolve({ status: 412, ok: false, headers: { get: function() { return null; } } });
@@ -244,6 +404,20 @@ async function main() {
         await rejects(Sync.configureAutoSyncAlarm(-1), '0 to 10080');
     } finally {
         global.chrome = originalChrome;
+    }
+
+    var savedFetchForPush = global.fetch;
+    var savedChromeForPush = global.chrome;
+    var savedDocumentForPush = global.document;
+    var savedWindowForPush = global.window;
+    try {
+        await assertFailedManualPushDoesNotSaveBaseline(false, 'mismatch');
+        await assertFailedManualPushDoesNotSaveBaseline(true, 'failed-get');
+    } finally {
+        global.fetch = savedFetchForPush;
+        global.chrome = savedChromeForPush;
+        if(typeof savedDocumentForPush === 'undefined') delete global.document; else global.document = savedDocumentForPush;
+        if(typeof savedWindowForPush === 'undefined') delete global.window; else global.window = savedWindowForPush;
     }
 
     console.log('WebDAV sync tests passed.');

@@ -318,7 +318,7 @@ var WebDAVSync = function() {
                             bytes.set(chunk, offset);
                             offset += chunk.byteLength;
                         });
-                        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+                        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
                     }
                     totalBytes += result.value.byteLength;
                     if(totalBytes > MAX_REMOTE_FILE_BYTES) {
@@ -331,6 +331,12 @@ var WebDAVSync = function() {
                 });
             };
             return readNext();
+        }
+        if(typeof response.arrayBuffer === 'function') {
+            return response.arrayBuffer().then(function(buffer) {
+                if(buffer.byteLength > MAX_REMOTE_FILE_BYTES) throw new Error('The WebDAV file exceeds the 5 MB safety limit.');
+                return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buffer);
+            });
         }
         return response.text().then(function(text) {
             if(encodeText(text).byteLength > MAX_REMOTE_FILE_BYTES) throw new Error('The WebDAV file exceeds the 5 MB safety limit.');
@@ -368,14 +374,33 @@ var WebDAVSync = function() {
         });
     }
 
+    function verifyWrittenReadback(settings, requestBody, putEtag) {
+        var unknownMessage = 'The server accepted the conditional write, but sync status is unknown; no baseline was saved. Inspect the remote file before retrying.';
+        return readRemote(settings).then(function(remote) {
+            if(!remote.exists) throw new Error(unknownMessage + ' The file was not present on read-back.');
+            if(!isStrongEtag(remote.etag)) throw new Error(unknownMessage + ' The read-back did not return a valid strong ETag.');
+            if(isStrongEtag(putEtag) && remote.etag !== putEtag) {
+                throw new Error(unknownMessage + ' The read-back ETag did not match the PUT response.');
+            }
+            if(remote.ciphertextBody !== requestBody) {
+                throw new Error(unknownMessage + ' The encrypted document did not exactly match the one sent.');
+            }
+            return remote.etag;
+        }, function() {
+            throw new Error(unknownMessage + ' The follow-up GET failed or returned an invalid encrypted document.');
+        });
+    }
+
     function putRemote(settings, document, etag) {
         var creating = etag === '';
+        var requestBody;
         if(!creating && !isStrongEtag(etag)) {
             return Promise.reject(new Error('The server returned the remote file, but did not provide a valid strong ETag. It will not be overwritten. Verify the file URL and ETag support.'));
         }
         var condition = creating ? { name: 'If-None-Match', value: '*' } : { name: 'If-Match', value: etag };
         return vault().encrypt(document, 'sync').then(function(envelope) {
-            return request(settings.endpoint, settings, 'PUT', JSON.stringify(envelope), condition);
+            requestBody = JSON.stringify(envelope);
+            return request(settings.endpoint, settings, 'PUT', requestBody, condition);
         }).then(function(response) {
             if(response.status === 401 || response.status === 403) throw new Error('WebDAV authentication failed. Check the endpoint username and password.');
             if(creating && !response.ok) {
@@ -386,9 +411,7 @@ var WebDAVSync = function() {
             }
             if(!response.ok) throw new Error('WebDAV write failed (HTTP ' + response.status + ').');
             var resultEtag = response.headers.get('ETag');
-            if(isStrongEtag(resultEtag)) return resultEtag;
-            if(creating) throw new Error('The server accepted the create-only write but did not return a valid strong ETag. The remote file may now exist; no baseline was saved. Inspect it before retrying.');
-            throw new Error('The server accepted the write but did not return a strong ETag. Sync status is unknown; inspect the remote file before retrying.');
+            return verifyWrittenReadback(settings, requestBody, resultEtag);
         });
     }
 
