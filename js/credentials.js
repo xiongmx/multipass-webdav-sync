@@ -40,7 +40,7 @@ module.exports = function() {
     function submit(e) {
         e.preventDefault(); if(!Vault.isUnlocked()) { clearSensitiveForm(); return; }
         var url = document.getElementById('url'), username = document.getElementById('username'), password = document.getElementById('password'), priority = document.getElementById('priority');
-        if(url.value === AuthPolicy.DEFAULT_RULE) { if(typeof window !== 'undefined' && window.alert) window.alert('Choose a narrower HTTPS rule; the default ^https:// rule is not submitted.'); return; }
+        if(url.value === AuthPolicy.DEFAULT_RULE) { if(typeof window !== 'undefined' && window.alert) window.alert(Translator.translateText('Choose a narrower HTTPS rule; the default ^https:// rule is not submitted.')); return; }
         var values = { url: url.value, username: username.value, password: password.value, priority: priority.value }; if(!values.url) return;
         var old = document.querySelector('tr.editing .url'), oldUrl = old && old.textContent ? old.textContent : undefined;
         CredentialStorage.saveCredential(values, oldUrl).then(function() { clearSensitiveForm(); }).catch(function() {});

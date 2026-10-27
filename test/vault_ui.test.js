@@ -118,12 +118,12 @@ async function main() {
     assert.strictEqual(inputs[0].value, '');
     assert.strictEqual(inputs[1].value, '');
     await Promise.resolve();
-    assert(textOf(section).indexOf('已解锁') >= 0);
+    assert(textOf(section).indexOf('Vault unlocked') >= 0);
 
     var lock = find(section, 'button');
     await lock.listeners.click();
     await Promise.resolve();
-    assert(textOf(section).indexOf('已锁定') >= 0);
+    assert(textOf(section).indexOf('locked on this page') >= 0);
     var unlockInput = find(section, 'input');
     assert.strictEqual(unlockInput.autocomplete, 'current-password');
     unlockInput.value = 'abcdefghijkl';
@@ -131,17 +131,17 @@ async function main() {
     await unlockForm.listeners.submit({ preventDefault: function() {} });
     assert.strictEqual(unlockInput.value, '');
     await Promise.resolve();
-    assert(textOf(section).indexOf('已解锁') >= 0);
+    assert(textOf(section).indexOf('Vault unlocked') >= 0);
     vault.failNextLock();
     await find(section, 'button').listeners.click();
-    assert.strictEqual(find(section, 'h2').textContent, '全局锁定未完成');
+    assert.strictEqual(find(section, 'h2').textContent, 'Global lock is incomplete');
     assert(textOf(section).includes('mock session.remove failure'), 'failure must be in the current DOM, not a removed status node');
     var alert = section.children.filter(function(child) { return child.role === 'alert'; })[0];
     assert(alert && alert.hidden === false, 'persistent live error region must remain visible');
-    assert(!textOf(section).includes('本页保险库已锁定'), 'failed operation must not render a lock-success heading');
+    assert(!textOf(section).includes('Vault locked on this page'), 'failed operation must not render a lock-success heading');
     assert.strictEqual(vault.isUnlocked(), false, 'failure must not restore local secrets');
     await find(section, 'button').listeners.click();
-    assert.strictEqual(find(section, 'h2').textContent, '本页保险库已锁定');
+    assert.strictEqual(find(section, 'h2').textContent, 'Vault locked on this page');
     assert(alert.hidden, 'only a successful retry can clear the failure alert');
     VaultUI._unsubscribe();
     delete require.cache[require.resolve('../js/vault_ui')];
@@ -152,8 +152,8 @@ async function main() {
     var recoveryInputs = recoverySection.querySelectorAll('input');
     recoveryInputs[0].value = recoveryInputs[1].value = 'abcdefghijkl'; recoveryInputs[2].checked = true;
     await find(recoverySection, 'form').listeners.submit({ preventDefault: function() {} });
-    assert.strictEqual(find(recoverySection, 'h2').textContent, '本页保险库已锁定');
-    assert(textOf(recoverySection).includes('迁移数据已保留'));
+    assert.strictEqual(find(recoverySection, 'h2').textContent, 'Vault locked on this page');
+    assert(textOf(recoverySection).includes('migration data were preserved'));
     assert.strictEqual(find(recoverySection, 'input').autocomplete, 'current-password');
     assert.strictEqual(recoveryInputs[0].value, '');
     assert(recoverySection.children.some(function(child) { return child.role === 'alert' && !child.hidden; }));

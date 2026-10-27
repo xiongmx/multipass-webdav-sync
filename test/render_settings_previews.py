@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHROME = ROOT / "build" / "chrome"
-OUTPUT = ROOT / "artifacts" / "ui"
+OUTPUT = Path(os.environ.get("MULTIPASS_PREVIEW_OUTPUT", str(ROOT / "artifacts" / "ui")))
 CHROMIUM = Path("/usr/bin/chromium")
 PASSPHRASE = "dummy preview vault phrase only"
 
@@ -86,7 +86,7 @@ global.chrome = { runtime, storage: {
     return json.loads(result.stdout)
 
 
-def chrome_mock(local: dict, session: dict, messages: dict, manifest: dict) -> str:
+def chrome_mock(local: dict, session: dict, messages: dict, manifest: dict, ui_language: str) -> str:
     return """<script>
 (() => {
   const localData = %s, sessionData = %s, messageData = %s;
@@ -121,12 +121,21 @@ def chrome_mock(local: dict, session: dict, messages: dict, manifest: dict) -> s
       getManifest: () => (%s),
       getURL: path => new URL(path, document.baseURI).href
     },
-    i18n: { getMessage: key => (messageData[key] && messageData[key].message) || key },
+    i18n: {
+      getMessage: (key, substitutions) => {
+        const item = messageData[key];
+        if (!item || !item.message) return '';
+        let message = item.message;
+        (substitutions || []).forEach((value, index) => { message = message.replace(new RegExp('\\$' + (index + 1) + '(?!\\d)', 'g'), String(value)); });
+        return message;
+      },
+      getUILanguage: () => (%s)
+    },
     storage: { local: area(localData, 'local'), session: area(sessionData, 'session'), onChanged: { addListener: fn => listeners.push(fn) } },
     alarms: { create: () => {}, clear: (name, cb) => cb && cb(true), get: (name, cb) => cb && cb(null), onAlarm: { addListener: fn => alarmListeners.push(fn), removeListener: fn => { const i = alarmListeners.indexOf(fn); if (i >= 0) alarmListeners.splice(i, 1); } } }
   };
 })();
-</script>""" % (json.dumps(local), json.dumps(session), json.dumps(messages), json.dumps(manifest))
+</script>""" % (json.dumps(local), json.dumps(session), json.dumps(messages), json.dumps(manifest), json.dumps(ui_language))
 
 
 def dom_probe() -> str:
@@ -135,8 +144,8 @@ def dom_probe() -> str:
   function mark() {
     const root = document.getElementById('vault-ui');
     if (!root) return;
-    const text = root.textContent || '';
-    const state = text.includes('设置加密保险库') ? 'setup' : text.includes('保险库已锁定') ? 'locked' : text.includes('保险库已解锁') ? 'unlocked' : 'unknown';
+    const passwordInputs = root.querySelectorAll('input[type="password"]').length;
+    const state = passwordInputs === 2 ? 'setup' : passwordInputs === 1 ? 'locked' : root.querySelector('button') ? 'unlocked' : 'unknown';
     root.dataset.vaultState = state;
     document.documentElement.dataset.renderScrollWidth = String(document.documentElement.scrollWidth);
     document.documentElement.dataset.renderHeight = String(Math.max(document.documentElement.scrollHeight, document.body.scrollHeight));
@@ -148,18 +157,18 @@ def dom_probe() -> str:
 </script>'''
 
 
-def prepare_page(temp_chrome: Path, fixture: dict, messages: dict) -> None:
+def prepare_page(temp_chrome: Path, fixture: dict, messages: dict, ui_language: str) -> None:
     page = temp_chrome / "options.html"
     html = page.read_text(encoding="utf-8")
     needle = '<script type="text/javascript" src="js/option.js"></script>'
     manifest = json.loads((temp_chrome / "manifest.json").read_text(encoding="utf-8"))
-    replacement = chrome_mock(fixture["local"], fixture["session"], messages, manifest) + needle + dom_probe()
+    replacement = chrome_mock(fixture["local"], fixture["session"], messages, manifest, ui_language) + needle + dom_probe()
     if needle not in html:
         raise AssertionError("options.html no longer contains the real option.js script tag")
     page.write_text(html.replace(needle, replacement), encoding="utf-8")
 
 
-def render(temp_chrome: Path, width: int, expected: str, destination: Path) -> None:
+def render(temp_chrome: Path, width: int, expected: str, destination: Path, ui_language: str) -> None:
     # Playwright launches a fresh temporary browser profile, never the user's profile.
     with sync_playwright() as runtime:
         browser = runtime.chromium.launch(executable_path=str(CHROMIUM), headless=True,
@@ -178,6 +187,11 @@ def render(temp_chrome: Path, width: int, expected: str, destination: Path) -> N
         metrics = page.evaluate("({width: innerWidth, scroll: document.documentElement.scrollWidth, height: Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)})")
         if metrics["width"] != width or metrics["scroll"] > width:
             raise AssertionError(f"Incorrect viewport or horizontal overflow: {metrics}")
+        rendered_text = page.locator("body").inner_text()
+        if "\ufffd" in rendered_text:
+            raise AssertionError("Rendered UI contains a Unicode replacement character")
+        if page.evaluate("document.documentElement.lang") != ui_language:
+            raise AssertionError("The document language was not updated to the selected UI locale")
         destination.parent.mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(destination), full_page=True)
         context.close()
@@ -190,7 +204,10 @@ def main() -> None:
         raise FileNotFoundError(f"Expected built Chrome page at {CHROME}")
     if not CHROMIUM.is_file():
         raise FileNotFoundError(f"Chromium not found at {CHROMIUM}")
-    messages = json.loads((CHROME / "_locales" / "en" / "messages.json").read_text(encoding="utf-8"))
+    locale_messages = {
+        "en": json.loads((CHROME / "_locales" / "en" / "messages.json").read_text(encoding="utf-8")),
+        "zh_CN": json.loads((CHROME / "_locales" / "zh_CN" / "messages.json").read_text(encoding="utf-8")),
+    }
     generated = node_fixture()
     fixtures = {
         "setup": {"local": {}, "session": {}},
@@ -199,16 +216,19 @@ def main() -> None:
     }
     with tempfile.TemporaryDirectory(prefix="multipass-settings-preview-") as temp:
         root = Path(temp)
-        for name, width, expected, output_name in [
-            ("setup", 1440, "setup", "options-vault-desktop.png"),
-            ("locked", 390, "locked", "options-vault-mobile-locked.png"),
-            ("unlocked", 390, "unlocked", "options-vault-mobile-unlocked.png"),
-        ]:
-            isolated = root / name / "chrome"
-            shutil.copytree(CHROME, isolated)
-            prepare_page(isolated, fixtures[name], messages)
-            render(isolated, width, expected, OUTPUT / output_name)
-    print(f"Rendered settings previews to {OUTPUT}")
+        for locale, messages in locale_messages.items():
+            ui_language = "zh-CN" if locale == "zh_CN" else "en"
+            for name, width, expected, output_name in [
+                ("setup", 1440, "setup", "setup-desktop"),
+                ("locked", 390, "locked", "mobile-locked"),
+                ("unlocked", 390, "unlocked", "mobile-unlocked"),
+            ]:
+                isolated = root / locale / name / "chrome"
+                shutil.copytree(CHROME, isolated)
+                prepare_page(isolated, fixtures[name], messages, ui_language)
+                destination = OUTPUT / f"options-{locale}-{output_name}.png"
+                render(isolated, width, expected, destination, ui_language)
+    print(f"Rendered English and Simplified Chinese settings previews to {OUTPUT}")
 
 
 if __name__ == "__main__":

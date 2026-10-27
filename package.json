@@ -16,8 +16,8 @@
     "build:firefox-android": "gulp build-firefox-android",
     "dist": "gulp dist",
     "dist:firefox-android": "gulp dist-firefox-android",
-    "test": "node test/storage.test.js && node test/vault.test.js && node test/vault_ui.test.js && node test/auth_https.test.js && node test/credential_safety.test.js && node test/credential_concurrency.test.js && node test/options_crypto.test.js && node test/webdav_sync.test.js",
-    "test:packages": "node test/package_https.test.js",
+    "test": "node test/storage.test.js && node test/vault.test.js && node test/vault_ui.test.js && node test/auth_https.test.js && node test/credential_safety.test.js && node test/credential_concurrency.test.js && node test/options_crypto.test.js && node test/webdav_sync.test.js && node test/i18n.test.js",
+    "test:packages": "node test/package_https.test.js && node test/package_i18n.test.js",
     "test:webdav-e2e": "node test/webdav_e2e.test.js"
   },
   "devDependencies": {
@@ -30,5 +30,5 @@
     "gulplog": "^2.0.1",
     "webpack-stream": "^7.0.0"
   },
-  "version": "1.1.2"
+  "version": "1.1.3"
 }

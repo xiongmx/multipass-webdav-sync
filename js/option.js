@@ -17,8 +17,8 @@ var OptionPanel = (function() {
     var downloadUrls = [];
 
     function showStorageError() {
-        storageStatus.textContent = Vault.isUnlocked() ?
-            'Local storage failed. Your changes may not have been saved.' : 'Unlock the vault before accessing credentials.';
+        storageStatus.textContent = Translator.translateText(Vault.isUnlocked() ?
+            'Local storage failed. Your changes may not have been saved.' : 'Unlock the Vault before accessing credentials.');
         storageStatus.hidden = false;
         storageStatus.className = 'webdav-status error';
     }
@@ -64,7 +64,7 @@ var OptionPanel = (function() {
         importOutput.replaceChildren(ul);
     }
     function rejectedImport() {
-        importOutput.textContent = 'Import rejected. Unlock the vault and use a valid encrypted export/backup with the same passphrase.';
+        importOutput.textContent = Translator.translateText('Import rejected. Unlock the Vault and use a valid encrypted export/backup with the same passphrase.');
     }
     function addPayload(text, epoch) {
         if(!Vault.isUnlocked() || epoch !== importEpoch) return Promise.reject(new Error('Vault is locked.'));
@@ -74,7 +74,7 @@ var OptionPanel = (function() {
         if(payload && payload.format === 'multipass-vault-v1' && (payload.kind === 'export' || payload.kind === 'backup')) {
             decoded = Vault.decrypt(payload, payload.kind);
         } else {
-            if(!window.confirm('这是旧明文文件。仅在你确认来源可信时导入；导入后将加密保存在保险库中。原文件不会自动删除，请另行清理。继续一次性迁移？')) {
+            if(!window.confirm(Translator.translateText('This is a legacy plaintext file. Import it only if you trust its source; it will be encrypted in the Vault. The original file will not be deleted automatically. Continue with this one-time migration?'))) {
                 return Promise.reject(new Error('Migration cancelled.'));
             }
             decoded = Promise.resolve(payload);

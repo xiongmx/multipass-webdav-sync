@@ -1,0 +1,866 @@
+{
+    "extName": {
+        "message": "MultiPass WebDAV 同步",
+        "description": "Name of the extension"
+    },
+    "extDescription": {
+        "message": "根据 URL 规则自动完成 HTTP Basic 身份验证。",
+        "description": "Description of the extension"
+    },
+    "credentials_section": {
+        "message": "凭据",
+        "description": "Credential section title in option pane"
+    },
+    "url_regexp": {
+        "message": "URL（正则表达式）",
+        "description": "Url table header"
+    },
+    "username": {
+        "message": "用户名",
+        "description": "Username table header"
+    },
+    "password": {
+        "message": "密码",
+        "description": "Password table header"
+    },
+    "priority": {
+        "message": "优先级",
+        "description": "Priority table header"
+    },
+    "show_hide_password": {
+        "message": "显示 / 隐藏",
+        "description": "Button to toggle password visibility"
+    },
+    "remove_credential": {
+        "message": "删除",
+        "description": "Button to remove a credential"
+    },
+    "edit_credential": {
+        "message": "编辑",
+        "description": "Button to edit a credential"
+    },
+    "add_credential": {
+        "message": "添加",
+        "description": "Button to add a credential"
+    },
+    "clear_credential": {
+        "message": "清空",
+        "description": "Button to clear current credential"
+    },
+    "clear_credentials_modal_title": {
+        "message": "清除所有凭据",
+        "description": "Modal message title when clearing credentials"
+    },
+    "clear_credentials_modal_text": {
+        "message": "确定要移除所有凭据吗？",
+        "description": "Modal message text when clearing credentials"
+    },
+    "modal_cancel": {
+        "message": "取消",
+        "description": "Cancel button in the modal"
+    },
+    "modal_yes": {
+        "message": "确定",
+        "description": "Yes button in the modal"
+    },
+    "test_section": {
+        "message": "测试正则表达式",
+        "description": "Test section title"
+    },
+    "tested_regex_label": {
+        "message": "你的正则表达式：",
+        "description": "Label of the test regex input"
+    },
+    "tested_urls": {
+        "message": "待测试的 URL：",
+        "description": "Title near the list of tested regex."
+    },
+    "import_section": {
+        "message": "导入",
+        "description": "Import section title"
+    },
+    "import_description": {
+        "message": "可以将凭据导入扩展，文件格式如下：",
+        "description": "Description of the import section"
+    },
+    "import_file": {
+        "message": "要导入的文件",
+        "description": "Label of the import file selector"
+    },
+    "import_json": {
+        "message": "要导入的 JSON",
+        "description": "Label of the import textarea for JSON"
+    },
+    "import_what": {
+        "message": "将导入哪些内容？",
+        "description": "Dry run of what will be imported from the JSON"
+    },
+    "import_nothing": {
+        "message": "-无内容-",
+        "description": "Indicator that the import preview is empty"
+    },
+    "import_submit": {
+        "message": "导入",
+        "description": "Import button"
+    },
+    "export_section": {
+        "message": "导出",
+        "description": "Export section title"
+    },
+    "export_button": {
+        "message": "下载加密凭据。恢复时需要使用同一个保险库口令。",
+        "description": "Export button"
+    },
+    "clear_section": {
+        "message": "清除所有凭据",
+        "description": "Clear credentials section title"
+    },
+    "clear_button": {
+        "message": "清除所有凭据",
+        "description": "Clear credentials button before confirmation"
+    },
+    "open_option_page": {
+        "message": "打开设置页面。",
+        "description": "Open the option page link"
+    },
+    "donate": {
+        "message": "喜欢这个扩展吗？欢迎小额捐赠：",
+        "description": "Text accompanying the donation button"
+    },
+    "https_only_notice": {
+        "message": "网站身份验证仅允许通过 HTTPS。HTTP（包括 localhost）不会收到凭据。既有 HTTP 规则仍会保留，但不会生效。",
+        "description": "User-visible extension UI message."
+    },
+    "import_legacy_warning": {
+        "message": "导入加密导出文件或备份时使用同一保险库口令。下方旧版明文示例仅用于一次性迁移，且需要确认。导入内容会在本地保存前加密；请另行删除旧的明文副本。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_title": {
+        "message": "自定义 WebDAV 同步",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_intro": {
+        "message": "WebDAV 同步通过 HTTPS 使用你配置的端点账号。同步文档和本地 WebDAV 状态由扩展保险库加密（AES-GCM-256、PBKDF2-SHA256，迭代 600,000 次）。原始保险库口令不会被保存。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_disclosure_heading": {
+        "message": "数据使用和第三方披露：",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_disclosure_body": {
+        "message": "同步时，扩展会将你配置的 WebDAV 用户名/密码及加密后的同步密文发送到你填写的第三方 WebDAV 端点。端点运营方仍可看到账号、URL、请求时间、密文大小和 ETag，但没有保险库密钥材料就无法读取同步文档。作为传输账号的 Basic 身份验证凭据对 WebDAV 服务可见。同步要求保险库处于解锁状态；锁定会停止定时任务并取消正在进行的请求。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_example_label": {
+        "message": "示例：",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_url_label": {
+        "message": "WebDAV 文件 URL",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_url_placeholder": {
+        "message": "https://webdav.example.net/dav/multipass-sync.json",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_username_label": {
+        "message": "WebDAV 用户名",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_password_label": {
+        "message": "WebDAV 密码",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_label": {
+        "message": "自动同步间隔",
+        "description": "User-visible extension UI message."
+    },
+    "interval_manual": {
+        "message": "仅手动",
+        "description": "User-visible extension UI message."
+    },
+    "interval_5": {
+        "message": "每 5 分钟",
+        "description": "User-visible extension UI message."
+    },
+    "interval_15": {
+        "message": "每 15 分钟",
+        "description": "User-visible extension UI message."
+    },
+    "interval_30": {
+        "message": "每 30 分钟",
+        "description": "User-visible extension UI message."
+    },
+    "interval_60": {
+        "message": "每小时",
+        "description": "User-visible extension UI message."
+    },
+    "interval_360": {
+        "message": "每 6 小时",
+        "description": "User-visible extension UI message."
+    },
+    "interval_720": {
+        "message": "每 12 小时",
+        "description": "User-visible extension UI message."
+    },
+    "interval_1440": {
+        "message": "每 24 小时",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_consent": {
+        "message": "我已了解数据用途、第三方接收方、加密密文存储及 WebDAV 账号元数据可见性，并明确授权在此设备上启用 WebDAV 同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_save": {
+        "message": "在此设备保存设置",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_now": {
+        "message": "立即同步",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull": {
+        "message": "拉取远端（替换本地）",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_push": {
+        "message": "推送本地（替换远端）",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_download_backup": {
+        "message": "下载最新的本地备份",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoke": {
+        "message": "撤销 WebDAV 同步授权",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_status_configure": {
+        "message": "配置 WebDAV 文件 URL 以开始使用。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_warning": {
+        "message": "所有 WebDAV 端点都必须使用 HTTPS，包括 localhost、127.0.0.1 和 [::1]。WebDAV 保存的是加密同步封装；服务器仍能看到 Basic 账号凭据和请求元数据。自动同步会拒绝旧版明文远端文件，绝不会静默覆盖；请先下载备份，检查后再使用明确的“推送本地”操作迁移。超过 5 MiB 的文件会被拒绝。自动同步依赖共同基线和强 ETag；如果两台设备都发生更改、远端文件被删除、快照为空或服务器未返回可靠 ETag，自动同步会停止并等待检查。浏览器定时任务可能晚于所选间隔运行。",
+        "description": "User-visible extension UI message."
+    },
+    "clear_sensitive_button": {
+        "message": "清除此设备上的所有敏感数据",
+        "description": "User-visible extension UI message."
+    },
+    "clear_sensitive_warning": {
+        "message": "此本地清除操作需要确认，并会移除本地凭据、临时凭据表单数据、WebDAV 账号/设置、同步元数据、备份和自动同步状态。它不会删除远端 WebDAV 文件或已下载到电脑的文件；请另行删除这些文件。",
+        "description": "User-visible extension UI message."
+    },
+    "footer_disclaimer": {
+        "message": "非官方 WebDAV Sync 分支 - $1。基于 Gilles Crettenand 的 MultiPass（原作者并非此分支的支持联系人）。",
+        "description": "User-visible extension UI message."
+    },
+    "local_storage_error": {
+        "message": "本地存储失败，你的更改可能未能保存。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlock_required": {
+        "message": "请先解锁保险库，再访问凭据。",
+        "description": "User-visible extension UI message."
+    },
+    "import_rejected": {
+        "message": "导入已拒绝。请解锁保险库，并使用同一口令生成的有效加密导出文件或备份。",
+        "description": "User-visible extension UI message."
+    },
+    "legacy_import_confirmation": {
+        "message": "这是旧版明文文件。仅在你信任其来源时导入；导入后会加密存入保险库。原文件不会自动删除。是否继续此次一次性迁移？",
+        "description": "User-visible extension UI message."
+    },
+    "default_https_rule_warning": {
+        "message": "请使用更精确的 HTTPS 规则；默认的 ^https:// 规则不会被提交。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_title": {
+        "message": "保险库",
+        "description": "User-visible extension UI message."
+    },
+    "vault_checking": {
+        "message": "正在检查保险库状态…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_read_error": {
+        "message": "无法读取保险库状态：$1",
+        "description": "User-visible extension UI message."
+    },
+    "vault_setup_title": {
+        "message": "设置加密保险库",
+        "description": "User-visible extension UI message."
+    },
+    "vault_setup_description": {
+        "message": "保险库会将现有旧版明文设置和凭据一次性迁入加密存储。旧版 WebDAV 明文文件不会自动覆盖，必须明确执行迁移。忘记口令后无法恢复。本提示不代表符合任何应用商店规范。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_new_passphrase": {
+        "message": "新的保险库口令（至少 12 个字符）",
+        "description": "User-visible extension UI message."
+    },
+    "vault_confirm_passphrase": {
+        "message": "再次输入保险库口令",
+        "description": "User-visible extension UI message."
+    },
+    "vault_risk_ack": {
+        "message": "我已了解：忘记口令后无法恢复，旧版 WebDAV 明文文件也不会自动覆盖。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_create_button": {
+        "message": "创建并加密保险库",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_too_short": {
+        "message": "口令至少需要 12 个字符。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_mismatch": {
+        "message": "两次输入的口令不一致。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_ack_required": {
+        "message": "请先确认口令不可恢复的风险。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_creating": {
+        "message": "正在创建加密保险库…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_create_failed": {
+        "message": "创建保险库失败。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_locked_heading": {
+        "message": "本页保险库已锁定",
+        "description": "User-visible extension UI message."
+    },
+    "vault_locked_description": {
+        "message": "本页的身份验证和同步已暂停。锁定无法撤销浏览器已缓存的身份验证或服务器维护的会话。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase": {
+        "message": "保险库口令",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlock_button": {
+        "message": "解锁保险库",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_required": {
+        "message": "请输入保险库口令。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocking": {
+        "message": "正在解锁…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_recovery_notice": {
+        "message": "加密保险库和迁移数据已保留，但本次解锁未完成。请使用同一口令再次解锁。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_operation_failed": {
+        "message": "操作失败。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_pending_title": {
+        "message": "正在撤销全局解锁状态",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_pending_description": {
+        "message": "本页已停止使用凭据，正在确认其他页面、后台进程和会话密钥的撤销状态。全局锁定尚未确认成功。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_global_lock_failure": {
+        "message": "全局锁定未完成：$1",
+        "description": "User-visible extension UI message."
+    },
+    "vault_global_revoke_unconfirmed": {
+        "message": "无法确认全局撤销状态。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_retry_global_lock": {
+        "message": "重试全局锁定",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_failure_description": {
+        "message": "本页会保持暂停且不会恢复凭据，但当前页面状态不能证明其他页面、后台进程或会话密钥已清除。请重试；成功前不要继续使用扩展。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocked_status": {
+        "message": "保险库已解锁。身份验证和同步可以运行。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocked_heading": {
+        "message": "保险库已解锁",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_button": {
+        "message": "锁定保险库",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_vault_unavailable": {
+        "message": "安全保险库不可用。请先解锁扩展，再使用 WebDAV 同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_vault_locked": {
+        "message": "保险库已锁定。请先解锁扩展，再使用 WebDAV 同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_operation_failed": {
+        "message": "WebDAV 操作失败。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_url": {
+        "message": "请输入有效的 HTTPS WebDAV 文件 URL。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_https_required": {
+        "message": "所有 WebDAV 端点（包括 localhost）都必须使用 HTTPS。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_credentials_in_url": {
+        "message": "请勿将用户名或密码放入 URL；请使用单独的字段。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_tokens_in_query": {
+        "message": "请勿将身份验证数据或令牌放入 URL 查询参数；请使用单独的字段。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_fragment": {
+        "message": "WebDAV URL 不得包含片段标识符。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_read_local_credentials_failed": {
+        "message": "无法读取本地凭据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_credential_entry": {
+        "message": "WebDAV 文件包含无效的凭据条目。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unknown_credential_fields": {
+        "message": "WebDAV 文件包含未知的凭据字段。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_crypto_unavailable": {
+        "message": "此浏览器未提供用于同步版本检查的 Web Crypto。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_format": {
+        "message": "此 WebDAV 文件属于旧版明文或已停用格式。自动同步会拒绝处理；请先下载备份，再通过“推送本地”并明确确认来迁移。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_format": {
+        "message": "WebDAV 文件格式不受支持或无效；未更改任何数据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unknown_fields": {
+        "message": "WebDAV 文件包含未知字段；未更改任何数据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revision_mismatch": {
+        "message": "WebDAV 文件版本与其中的凭据不匹配；未更改任何数据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_network_stopped": {
+        "message": "保险库已锁定；WebDAV 网络访问已停止。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_file_too_large": {
+        "message": "WebDAV 文件超过 5 MiB 安全限制。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_locked_before_access": {
+        "message": "WebDAV 网络访问开始前保险库已锁定。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_timeout": {
+        "message": "WebDAV 写入超时；数据可能已经写入。重试前请先检查远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_request_timeout": {
+        "message": "WebDAV 请求超时；未尝试自动重试。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_auth_failed": {
+        "message": "WebDAV 身份验证失败。请检查端点用户名和密码。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_read_failed": {
+        "message": "WebDAV 读取失败（HTTP $1）。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_json": {
+        "message": "WebDAV 文件不是有效的 JSON。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_unsupported": {
+        "message": "WebDAV 文件是旧版明文或不受支持的格式；自动同步已拒绝处理。请先下载备份，再通过“推送本地”并明确确认来迁移。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_decrypt_failed": {
+        "message": "无法解密 WebDAV 文件；请解锁相同的保险库，或检查远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_conditional_write_rejected": {
+        "message": "服务器拒绝了条件写入。本地数据已保留；再次同步前请检查两份副本。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_failed": {
+        "message": "WebDAV 写入失败（HTTP $1）。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_missing_etag": {
+        "message": "服务器已接受写入，但没有返回强 ETag。同步状态未知；重试前请检查远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_save_url_first": {
+        "message": "请先保存 WebDAV URL，再开始同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_not_authorized": {
+        "message": "此设备尚未获准进行 WebDAV 同步。请阅读披露内容并明确同意，然后再保存或同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_saved_invalid": {
+        "message": "已保存的自动同步间隔无效。请检查 WebDAV 设置。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_baseline_verify_failed": {
+        "message": "无法验证远端文件内容；未保存同步基线。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_unconfirmed": {
+        "message": "无法使用返回的强 ETag 确认远端写入；未保存基线。重试前请检查远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_server_returned_different": {
+        "message": "写入后服务器返回了不同的文档；未保存基线。再次同步前请检查两份副本。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_empty_upload_blocked": {
+        "message": "已阻止自动上传空凭据集。如果确实要用空集合替换远端文件，请明确使用“推送本地”。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_upload": {
+        "message": "同步期间本地凭据发生变化。未上传任何内容；请重新同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_uploaded_changes": {
+        "message": "已将此设备的更改上传到 WebDAV。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_empty_download_blocked": {
+        "message": "已阻止自动下载空凭据集。如果确实要清除本地凭据，请明确使用“拉取远端”。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_revision_same": {
+        "message": "远端时间戳/ETag 已变化，但凭据版本未变化；已刷新基线，未替换本地数据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_changed_sync": {
+        "message": "同步期间远端文件发生变化。未替换任何内容；请重新同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_revision_changed": {
+        "message": "同步期间远端版本发生变化。未替换任何内容；请重新同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_pull": {
+        "message": "同步期间本地凭据发生变化。未替换任何内容；请重新同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_downloaded_other_changes": {
+        "message": "已下载另一台设备的更改。之前的本地数据可从备份中恢复。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_create": {
+        "message": "不存在共同的同步基线。自动同步未创建远端文件；请使用“立即同步”或“推送本地”主动初始化。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_first_connect": {
+        "message": "此设备没有共同的同步基线。请选择“拉取远端”或“推送本地”；自动同步未更改任何内容。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_missing_etag": {
+        "message": "WebDAV 服务器未提供强 ETag。为避免不安全写入，自动同步已停止。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_etag_inconsistent": {
+        "message": "远端文档已变化，但强 ETag 未相应变化。自动同步已停止；请检查 WebDAV 服务器。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_remote_deleted": {
+        "message": "上次同步后远端文件已被删除。自动同步未重新创建该文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_conflict": {
+        "message": "发生冲突：自共同基线以来，本地凭据和 WebDAV 文件都已更改。两份副本均未被覆盖；请检查后选择“拉取远端”或“推送本地”。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_unchanged": {
+        "message": "自动同步检查：两台设备都与上次共享版本一致。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_disabled": {
+        "message": "此设备已关闭 WebDAV 自动同步。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_stopped": {
+        "message": "自动同步已停止，未更改任何数据。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_failed": {
+        "message": "WebDAV 自动同步失败。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_storage_not_initialized": {
+        "message": "凭据存储尚未初始化。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_range": {
+        "message": "请选择 0 到 10080 分钟之间的自动同步间隔。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_alarms_unavailable": {
+        "message": "此浏览器未提供定时任务 API。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_first_sync_empty": {
+        "message": "首次同步不会创建空的远端文件。请先添加凭据，或明确使用“推送本地”操作。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_created_file": {
+        "message": "已通过 If-None-Match 创建加密 WebDAV 同步文件。此设备现已建立同步基线。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_failed_generic": {
+        "message": "WebDAV 同步失败。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_remote_file": {
+        "message": "没有可下载的远端文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_strong_etag_pull": {
+        "message": "拉取前，WebDAV 服务器必须返回强 ETag。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull_confirm": {
+        "message": "要用加密 WebDAV 文件中的 $1 条凭据替换此设备上的凭据吗？本地备份会保留。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_changed_during_confirm": {
+        "message": "你确认期间远端文件发生变化。未替换任何内容；请检查后重试。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_confirm": {
+        "message": "你确认期间本地凭据发生变化。未替换任何内容；请检查后重试。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull_success": {
+        "message": "已下载并解密 WebDAV 文件。之前的本地数据可从加密备份中恢复。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_download_failed": {
+        "message": "下载失败。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_push_confirm": {
+        "message": "远端文件是旧版明文。请先下载/保留本地加密备份，然后明确确认用加密密文替换它以完成迁移？服务器上的旧版远端文件不会保留。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_strong_etag_overwrite": {
+        "message": "WebDAV 服务器必须返回强 ETag。现有远端文件不会被覆盖。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_replace_confirm": {
+        "message": "要用此设备上的 $1 条凭据替换当前 WebDAV 文件吗？之前的远端文件会保存为本地加密备份。服务器只存储加密密文。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_create_confirm": {
+        "message": "要使用此设备上的 $1 条凭据创建新的加密 WebDAV 文件吗？",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_push": {
+        "message": "你确认期间本地凭据发生变化。未上传任何内容；请检查后重试。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_push_success": {
+        "message": "已上传此设备的凭据。WebDAV 服务器存储的是密文，但仍可看到账号、URL、请求时间、大小和 ETag。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_upload_failed": {
+        "message": "上传失败。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_backup_downloaded": {
+        "message": "已将最新本地备份下载为加密保险库备份。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_backup_download_failed": {
+        "message": "无法下载备份。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_consent_required": {
+        "message": "保存或启用同步前，请阅读并接受 WebDAV 数据使用说明。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_saved_auto": {
+        "message": "WebDAV 设置和自动同步间隔已保存在此设备上。凭据留在本地；远端文件为加密密文。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_saved_manual": {
+        "message": "WebDAV 设置已保存在此设备上。自动同步已关闭。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoke_confirm": {
+        "message": "要撤销 WebDAV 同步授权吗？这会停止自动同步，并清除此设备上保存的 WebDAV 密码、同步基线、备份和授权记录。不会删除远端文件或已下载文件。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoked": {
+        "message": "WebDAV 同步授权已撤销。远端文件和已下载文件仍需另行删除。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_clear_confirm": {
+        "message": "要清除此设备上存储的所有凭据和敏感数据吗？远端 WebDAV 文件和已下载的备份文件不会被删除，必须另行移除。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_cleared": {
+        "message": "所有本地凭据和 WebDAV 敏感数据均已清除。远端文件和已下载文件未被删除。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_locked_status": {
+        "message": "保险库已锁定。WebDAV 同步和网络访问均已停止。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unlocked_status": {
+        "message": "保险库已解锁。同步前请检查 WebDAV 设置并确认授权。",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_load_failed": {
+        "message": "无法加载已保存的 WebDAV 设置。",
+        "description": "User-visible extension UI message."
+    },
+    "footer_prefix": {
+        "message": "非官方 WebDAV Sync 分支",
+        "description": "User-visible extension UI message."
+    },
+    "footer_suffix": {
+        "message": "基于 Gilles Crettenand 的 MultiPass（原作者并非此分支的支持联系人）。",
+        "description": "User-visible extension UI message."
+    },
+    "website_auth_warning": {
+        "message": "网站 Basic 身份验证仅允许通过 HTTPS。HTTP 挑战（包括 localhost）、代理身份验证和非 Basic 挑战都不会收到凭据。请为可信 HTTPS 源站使用精确规则。",
+        "description": "User-visible extension UI message."
+    },
+    "vault_no_web_locks": {
+        "message": "跨上下文 Web Locks 不可用。未写入任何数据。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_storage_key": {
+        "message": "保险库存储键无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_storage_operation_failed": {
+        "message": "存储操作失败。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_removal_unavailable": {
+        "message": "无法执行存储移除操作。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_encoding": {
+        "message": "保险库编码无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_value_not_serializable": {
+        "message": "保险库中的值无法序列化。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_value_too_large": {
+        "message": "保险库中的值过大。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_kind": {
+        "message": "保险库数据类型无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_envelope": {
+        "message": "保险库加密封装无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_plaintext": {
+        "message": "保险库解密数据无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_revocation_state": {
+        "message": "保险库撤销状态无效。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_secure_session_unavailable": {
+        "message": "安全会话存储不可用。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_passphrase_constraints": {
+        "message": "口令必须为 12 至 1024 个非空白字符。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_session_publication_failed": {
+        "message": "保险库会话发布失败。加密数据已保留；请使用相同口令解锁。$1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_already_configured": {
+        "message": "保险库已设置。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_not_configured": {
+        "message": "保险库尚未设置。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_unlock_failed": {
+        "message": "保险库解锁失败。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_state_changed_unlock": {
+        "message": "保险库状态已变化。请重新解锁。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_secure_session_revoke_failed": {
+        "message": "无法撤销安全会话密钥。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_global_lock_unconfirmed": {
+        "message": "无法确认保险库已全局锁定：$1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_global_lock_incomplete": {
+        "message": "无法完成保险库全局锁定：$1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_lock_callback_required": {
+        "message": "必须提供锁定回调。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_updater_required": {
+        "message": "必须提供保险库更新函数。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_locked_error": {
+        "message": "保险库已锁定。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_storage_unavailable": {
+        "message": "扩展本地存储不可用。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_crypto_operation_failed": {
+        "message": "操作因特定原因失败。",
+        "description": "Vault error shown in the extension UI."
+    },
+    "license_link": {
+        "message": "WTFPL 许可证",
+        "description": "License link label."
+    }
+}

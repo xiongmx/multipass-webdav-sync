@@ -126,5 +126,741 @@
     "donate": {
         "message": "Like the extension? A small donation would be really nice:",
         "description": "Text accompanying the donation button"
+    },
+    "https_only_notice": {
+        "message": "Website authentication uses HTTPS only. HTTP (including localhost) never receives credentials. Existing HTTP rules remain stored but are inactive.",
+        "description": "User-visible extension UI message."
+    },
+    "import_legacy_warning": {
+        "message": "Import encrypted exports or backups using the same Vault passphrase. The legacy plaintext example below is for one-time migration only and requires confirmation. Imported entries are encrypted before local persistence; delete old plaintext copies separately.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_title": {
+        "message": "Custom WebDAV sync",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_intro": {
+        "message": "WebDAV sync uses your endpoint account over HTTPS. The sync document and local WebDAV state are encrypted with the extension Vault (AES-GCM-256, PBKDF2-SHA256, 600,000 iterations). The original Vault passphrase is never stored.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_disclosure_heading": {
+        "message": "Data use and third-party disclosure:",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_disclosure_body": {
+        "message": "When you sync, this extension sends the configured WebDAV username/password and encrypted sync ciphertext to the third-party WebDAV endpoint you enter. The endpoint operator can still see the account, URL, timing, ciphertext size and ETag, but cannot read the sync document without the Vault material. Basic authentication credentials remain visible to the WebDAV service as the transport account. Sync requires an unlocked Vault; locking stops alarms and cancels in-flight requests.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_example_label": {
+        "message": "Example:",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_url_label": {
+        "message": "WebDAV file URL",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_url_placeholder": {
+        "message": "https://webdav.example.net/dav/multipass-sync.json",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_username_label": {
+        "message": "WebDAV username",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_password_label": {
+        "message": "WebDAV password",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_label": {
+        "message": "Automatic sync interval",
+        "description": "User-visible extension UI message."
+    },
+    "interval_manual": {
+        "message": "Manual only",
+        "description": "User-visible extension UI message."
+    },
+    "interval_5": {
+        "message": "Every 5 minutes",
+        "description": "User-visible extension UI message."
+    },
+    "interval_15": {
+        "message": "Every 15 minutes",
+        "description": "User-visible extension UI message."
+    },
+    "interval_30": {
+        "message": "Every 30 minutes",
+        "description": "User-visible extension UI message."
+    },
+    "interval_60": {
+        "message": "Every hour",
+        "description": "User-visible extension UI message."
+    },
+    "interval_360": {
+        "message": "Every 6 hours",
+        "description": "User-visible extension UI message."
+    },
+    "interval_720": {
+        "message": "Every 12 hours",
+        "description": "User-visible extension UI message."
+    },
+    "interval_1440": {
+        "message": "Every 24 hours",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_consent": {
+        "message": "I understand the data use, third-party recipient, encrypted ciphertext storage and visible WebDAV account metadata, and explicitly authorize WebDAV sync on this device.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_save": {
+        "message": "Save settings on this device",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_now": {
+        "message": "Sync now",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull": {
+        "message": "Pull remote (replace local)",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_push": {
+        "message": "Push local (replace remote)",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_download_backup": {
+        "message": "Download latest local backup",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoke": {
+        "message": "Revoke WebDAV sync authorization",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_status_configure": {
+        "message": "Configure a WebDAV file URL to begin.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_warning": {
+        "message": "All WebDAV endpoints must use HTTPS, including localhost, 127.0.0.1 and [::1]. WebDAV stores an encrypted sync envelope; the server still sees Basic account credentials and request metadata. Legacy plaintext remote files are refused by automatic sync and are never silently overwritten; download a backup first, then use explicit Push local migration only after review. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval.",
+        "description": "User-visible extension UI message."
+    },
+    "clear_sensitive_button": {
+        "message": "Clear all sensitive data on this device",
+        "description": "User-visible extension UI message."
+    },
+    "clear_sensitive_warning": {
+        "message": "This local-clear action requires confirmation and removes local credentials, temporary credential form data, WebDAV account/settings, sync metadata, backups, and automatic-sync status. It does not delete remote WebDAV files or files already downloaded to your computer; delete those separately.",
+        "description": "User-visible extension UI message."
+    },
+    "footer_disclaimer": {
+        "message": "Unofficial WebDAV Sync fork - $1. Based on MultiPass by Gilles Crettenand (original author, not this fork’s support contact).",
+        "description": "User-visible extension UI message."
+    },
+    "local_storage_error": {
+        "message": "Local storage failed. Your changes may not have been saved.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlock_required": {
+        "message": "Unlock the Vault before accessing credentials.",
+        "description": "User-visible extension UI message."
+    },
+    "import_rejected": {
+        "message": "Import rejected. Unlock the Vault and use a valid encrypted export/backup with the same passphrase.",
+        "description": "User-visible extension UI message."
+    },
+    "legacy_import_confirmation": {
+        "message": "This is a legacy plaintext file. Import it only if you trust its source; it will be encrypted in the Vault. The original file will not be deleted automatically. Continue with this one-time migration?",
+        "description": "User-visible extension UI message."
+    },
+    "default_https_rule_warning": {
+        "message": "Choose a narrower HTTPS rule; the default ^https:// rule is not submitted.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_title": {
+        "message": "Vault",
+        "description": "User-visible extension UI message."
+    },
+    "vault_checking": {
+        "message": "Checking Vault status…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_read_error": {
+        "message": "Could not read Vault status: $1",
+        "description": "User-visible extension UI message."
+    },
+    "vault_setup_title": {
+        "message": "Set up encrypted Vault",
+        "description": "User-visible extension UI message."
+    },
+    "vault_setup_description": {
+        "message": "The Vault migrates existing legacy plaintext settings and credentials into encrypted storage once. Legacy plaintext WebDAV files are not overwritten automatically; migration must be explicit. Forgotten passphrases cannot be recovered. This notice is not a claim of store compliance.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_new_passphrase": {
+        "message": "New Vault passphrase (at least 12 characters)",
+        "description": "User-visible extension UI message."
+    },
+    "vault_confirm_passphrase": {
+        "message": "Confirm Vault passphrase",
+        "description": "User-visible extension UI message."
+    },
+    "vault_risk_ack": {
+        "message": "I understand: forgotten passphrases cannot be recovered, and legacy plaintext WebDAV files are not automatically overwritten.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_create_button": {
+        "message": "Create and encrypt Vault",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_too_short": {
+        "message": "The passphrase must be at least 12 characters.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_mismatch": {
+        "message": "The passphrases do not match.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_ack_required": {
+        "message": "Confirm the unrecoverable-passphrase risk before continuing.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_creating": {
+        "message": "Creating encrypted Vault…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_create_failed": {
+        "message": "Could not create the Vault.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_locked_heading": {
+        "message": "Vault locked on this page",
+        "description": "User-visible extension UI message."
+    },
+    "vault_locked_description": {
+        "message": "Authentication and sync on this page are paused. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase": {
+        "message": "Vault passphrase",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlock_button": {
+        "message": "Unlock Vault",
+        "description": "User-visible extension UI message."
+    },
+    "vault_passphrase_required": {
+        "message": "Enter the Vault passphrase.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocking": {
+        "message": "Unlocking…",
+        "description": "User-visible extension UI message."
+    },
+    "vault_recovery_notice": {
+        "message": "The encrypted Vault and migration data were preserved, but this unlock did not finish. Unlock again with the same passphrase.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_operation_failed": {
+        "message": "The operation failed.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_pending_title": {
+        "message": "Revoking global unlock state",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_pending_description": {
+        "message": "This page has stopped using credentials and is confirming revocation across other pages, the background process and session keys. Global lock has not yet been confirmed.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_global_lock_failure": {
+        "message": "Global lock is incomplete: $1",
+        "description": "User-visible extension UI message."
+    },
+    "vault_global_revoke_unconfirmed": {
+        "message": "Global revocation could not be confirmed.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_retry_global_lock": {
+        "message": "Retry global lock",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_failure_description": {
+        "message": "This page remains paused and will not restore credentials, but its state cannot prove that other pages, the background process or session keys were cleared. Retry; do not use the extension until this succeeds.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocked_status": {
+        "message": "The Vault is unlocked. Authentication and sync can run.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_unlocked_heading": {
+        "message": "Vault unlocked",
+        "description": "User-visible extension UI message."
+    },
+    "vault_lock_button": {
+        "message": "Lock Vault",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_vault_unavailable": {
+        "message": "Secure Vault is unavailable. Unlock the extension before using WebDAV sync.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_vault_locked": {
+        "message": "Vault is locked. Unlock the extension before using WebDAV sync.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_operation_failed": {
+        "message": "WebDAV operation failed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_url": {
+        "message": "Enter a valid HTTPS WebDAV file URL.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_https_required": {
+        "message": "HTTPS is required for every WebDAV endpoint, including localhost.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_credentials_in_url": {
+        "message": "Do not put a username or password in the URL; use the separate fields.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_tokens_in_query": {
+        "message": "Do not put authentication data or tokens in the URL query; use the separate fields.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_fragment": {
+        "message": "The WebDAV URL must not contain a fragment.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_read_local_credentials_failed": {
+        "message": "Could not read the local credentials.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_credential_entry": {
+        "message": "The WebDAV file contains an invalid credential entry.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unknown_credential_fields": {
+        "message": "The WebDAV file contains unknown credential fields.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_crypto_unavailable": {
+        "message": "This browser does not provide Web Crypto for sync revision checks.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_format": {
+        "message": "This WebDAV file is a legacy plaintext/retired format. Automatic sync refuses it; download a backup, then use Push local and explicitly confirm migration.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_format": {
+        "message": "The WebDAV file has an unsupported or invalid format; no data was changed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unknown_fields": {
+        "message": "The WebDAV file contains unknown fields; no data was changed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revision_mismatch": {
+        "message": "The WebDAV file revision does not match its credentials; no data was changed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_network_stopped": {
+        "message": "Vault is locked; WebDAV network access is stopped.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_file_too_large": {
+        "message": "The WebDAV file exceeds the 5 MiB safety limit.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_locked_before_access": {
+        "message": "Vault locked before WebDAV network access.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_timeout": {
+        "message": "The WebDAV write timed out; it may have been written. Check the remote file before retrying.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_request_timeout": {
+        "message": "The WebDAV request timed out; no automatic retry was attempted.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_auth_failed": {
+        "message": "WebDAV authentication failed. Check the endpoint username and password.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_read_failed": {
+        "message": "WebDAV read failed (HTTP $1).",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_invalid_json": {
+        "message": "The WebDAV file is not valid JSON.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_unsupported": {
+        "message": "The WebDAV file is legacy plaintext or unsupported; automatic sync refused it. Download a backup, then use Push local and explicitly confirm migration.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_decrypt_failed": {
+        "message": "The WebDAV file could not be decrypted; unlock the same Vault or inspect the remote file.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_conditional_write_rejected": {
+        "message": "The server rejected the conditional write. Local data was retained; inspect both copies before syncing again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_failed": {
+        "message": "WebDAV write failed (HTTP $1).",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_missing_etag": {
+        "message": "The server accepted the write but did not return a strong ETag. Sync status is unknown; inspect the remote file before retrying.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_save_url_first": {
+        "message": "Save a WebDAV URL before syncing.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_not_authorized": {
+        "message": "WebDAV sync is not authorized on this device. Review the disclosure and explicitly agree before saving or syncing.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_saved_invalid": {
+        "message": "The saved automatic sync interval is invalid. Review the WebDAV settings.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_baseline_verify_failed": {
+        "message": "Could not verify the remote file body; no sync baseline was saved.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_write_unconfirmed": {
+        "message": "The remote write could not be confirmed with the returned strong ETag; no baseline was saved. Inspect the remote file before retrying.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_server_returned_different": {
+        "message": "The server returned a different document after writing; no baseline was saved. Inspect both copies before syncing again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_empty_upload_blocked": {
+        "message": "Automatic upload of an empty credential set is blocked. Use Push local explicitly if you intend to replace the remote file with an empty set.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_upload": {
+        "message": "Local credentials changed during sync. Nothing was uploaded; sync again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_uploaded_changes": {
+        "message": "Uploaded this device’s changes to WebDAV.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_empty_download_blocked": {
+        "message": "Automatic download of an empty credential set is blocked. Use Pull remote explicitly if you intend to clear local credentials.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_revision_same": {
+        "message": "The remote timestamp/ETag changed, but the credential revision is unchanged; baseline refreshed without replacing local data.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_changed_sync": {
+        "message": "The remote file changed during sync. Nothing was replaced; sync again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_remote_revision_changed": {
+        "message": "The remote revision changed during sync. Nothing was replaced; sync again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_pull": {
+        "message": "Local credentials changed during sync. Nothing was replaced; sync again.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_downloaded_other_changes": {
+        "message": "Downloaded the other device’s changes. Previous local data is available as a backup.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_create": {
+        "message": "No common sync baseline exists. Automatic sync did not create a remote file; use Sync now or Push local to initialize deliberately.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_first_connect": {
+        "message": "This device has no common sync baseline. Choose Pull remote or Push local; automatic sync changed nothing.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_missing_etag": {
+        "message": "The WebDAV server did not provide a strong ETag. Automatic sync stopped to prevent unsafe writes.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_etag_inconsistent": {
+        "message": "The remote document changed without a matching strong ETag change. Automatic sync stopped; check the WebDAV server.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_remote_deleted": {
+        "message": "The remote file was deleted after the last sync. Automatic sync did not recreate it.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_conflict": {
+        "message": "Conflict: local credentials and the WebDAV file both changed since the shared baseline. Neither copy was overwritten; review both and choose Pull remote or Push local.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_unchanged": {
+        "message": "Automatic sync check: both devices match the last shared revision.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_disabled": {
+        "message": "Automatic WebDAV sync is disabled on this device.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_action_stopped": {
+        "message": "Automatic sync stopped without changing data.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_failed": {
+        "message": "Automatic WebDAV sync failed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_storage_not_initialized": {
+        "message": "Credential storage is not initialized.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_interval_range": {
+        "message": "Choose an automatic sync interval from 0 to 10080 minutes.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_alarms_unavailable": {
+        "message": "This browser does not provide the alarms API.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_first_sync_empty": {
+        "message": "The first sync will not create an empty remote file. Add credentials or use the explicit Push local action.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_created_file": {
+        "message": "Created an encrypted WebDAV sync file using If-None-Match. This device now has a sync baseline.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_sync_failed_generic": {
+        "message": "WebDAV synchronization failed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_no_remote_file": {
+        "message": "There is no remote file to download.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_strong_etag_pull": {
+        "message": "The WebDAV server must return a strong ETag before pulling.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull_confirm": {
+        "message": "Replace this device’s credentials with $1 entries from the encrypted WebDAV file? A local backup will be kept.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_changed_during_confirm": {
+        "message": "The remote file changed while you were confirming. Nothing was replaced; review it and retry.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_confirm": {
+        "message": "Local credentials changed while you were confirming. Nothing was replaced; review and retry.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_pull_success": {
+        "message": "Downloaded and decrypted the WebDAV file. Previous local data is available as an encrypted backup.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_download_failed": {
+        "message": "Download failed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_legacy_push_confirm": {
+        "message": "The remote file is legacy plaintext. Download/retain the local encrypted backup, then explicitly migrate it by replacing it with encrypted ciphertext? The legacy remote will not be preserved on the server.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_strong_etag_overwrite": {
+        "message": "The WebDAV server must return a strong ETag. The existing remote file will not be overwritten.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_replace_confirm": {
+        "message": "Replace the current WebDAV file with this device’s $1 entries? The previous remote file will be saved as an encrypted local backup. The server stores encrypted ciphertext.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_create_confirm": {
+        "message": "Create a new encrypted WebDAV file with this device’s $1 entries?",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_local_changed_push": {
+        "message": "Local credentials changed while you were confirming. Nothing was uploaded; review and retry.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_push_success": {
+        "message": "Uploaded this device’s credentials. The WebDAV server stores ciphertext; it can still see the account, URL, timing, size and ETag.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_upload_failed": {
+        "message": "Upload failed.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_backup_downloaded": {
+        "message": "Downloaded the latest local backup as an encrypted Vault backup.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_backup_download_failed": {
+        "message": "Could not download the backup.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_consent_required": {
+        "message": "Read and accept the WebDAV data-use disclosure before saving or enabling sync.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_saved_auto": {
+        "message": "WebDAV settings and automatic sync interval saved on this device. Credentials stay local; the remote file is encrypted ciphertext.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_saved_manual": {
+        "message": "WebDAV settings saved on this device. Automatic sync is off.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoke_confirm": {
+        "message": "Revoke WebDAV sync authorization? This stops automatic sync and clears the saved WebDAV password, sync baseline, backups, and consent on this device. Remote files and downloaded files are not deleted.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_revoked": {
+        "message": "WebDAV sync authorization revoked. Remote and downloaded files still need separate deletion.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_clear_confirm": {
+        "message": "Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_cleared": {
+        "message": "All local credentials and sensitive WebDAV data were cleared. Remote and downloaded files were not deleted.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_locked_status": {
+        "message": "Vault locked. WebDAV sync and network access are stopped.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_unlocked_status": {
+        "message": "Vault unlocked. Review WebDAV settings and consent before syncing.",
+        "description": "User-visible extension UI message."
+    },
+    "webdav_settings_load_failed": {
+        "message": "Could not load saved WebDAV settings.",
+        "description": "User-visible extension UI message."
+    },
+    "footer_prefix": {
+        "message": "Unofficial WebDAV Sync fork",
+        "description": "User-visible extension UI message."
+    },
+    "footer_suffix": {
+        "message": "Based on MultiPass by Gilles Crettenand (original author, not this fork's support contact).",
+        "description": "User-visible extension UI message."
+    },
+    "website_auth_warning": {
+        "message": "Website Basic authentication is HTTPS-only. HTTP challenges, including localhost, proxy authentication and non-Basic challenges never receive credentials. Use precise rules for trusted HTTPS origins.",
+        "description": "User-visible extension UI message."
+    },
+    "vault_no_web_locks": {
+        "message": "Cross-context Web Locks are unavailable. No data was written.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_storage_key": {
+        "message": "Invalid vault storage key.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_storage_operation_failed": {
+        "message": "Storage operation failed.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_removal_unavailable": {
+        "message": "Storage removal is unavailable.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_encoding": {
+        "message": "Invalid vault encoding.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_value_not_serializable": {
+        "message": "Vault value is not serializable.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_value_too_large": {
+        "message": "Vault value is too large.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_kind": {
+        "message": "Invalid vault kind.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_envelope": {
+        "message": "Invalid vault envelope.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_plaintext": {
+        "message": "Invalid vault plaintext.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_invalid_revocation_state": {
+        "message": "Invalid vault revocation state.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_secure_session_unavailable": {
+        "message": "Secure session storage is unavailable.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_passphrase_constraints": {
+        "message": "Passphrase must contain 12-1024 non-whitespace characters.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_session_publication_failed": {
+        "message": "Vault session publication failed. Encrypted data is retained; unlock with the same passphrase. $1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_already_configured": {
+        "message": "Vault is already configured.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_not_configured": {
+        "message": "Vault is not configured.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_unlock_failed": {
+        "message": "Vault unlock failed.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_state_changed_unlock": {
+        "message": "Vault state changed. Unlock again.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_secure_session_revoke_failed": {
+        "message": "Secure session root could not be revoked.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_global_lock_unconfirmed": {
+        "message": "Global vault lock could not be confirmed: $1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_global_lock_incomplete": {
+        "message": "Global vault lock could not be completed: $1",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_lock_callback_required": {
+        "message": "A lock callback is required.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_updater_required": {
+        "message": "A vault updater is required.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_locked_error": {
+        "message": "Vault is locked.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_storage_unavailable": {
+        "message": "Local extension storage is unavailable.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "vault_crypto_operation_failed": {
+        "message": "The operation failed for an operation-specific reason.",
+        "description": "Vault error shown in the extension UI."
+    },
+    "license_link": {
+        "message": "WTFPL license",
+        "description": "License link label."
     }
 }

@@ -107,7 +107,7 @@ async function main() {
     installMock('vault', vault);
     installMock('vault_ui', { init: function() {} });
     installMock('storage', storage);
-    installMock('translator', { translate: function(key) { return key; } });
+    installMock('translator', { translate: function(key) { return key; }, translateText: function(text) { return text; } });
     installMock('webdav_sync', { init: function() {} });
     installMock('auth_policy', { matchesRule: function() { return false; } });
     global.document = document;

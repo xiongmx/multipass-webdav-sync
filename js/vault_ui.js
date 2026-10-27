@@ -2,13 +2,14 @@
 'use strict';
 
 var Vault = require('./vault');
+var Translator = require('./translator');
 
 var MIN_PASSPHRASE_LENGTH = 12;
 var SECTION_ID = 'vault-ui';
 
 function make(document, tag, text) {
     var element = document.createElement(tag);
-    if(text !== undefined) element.textContent = text;
+    if(text !== undefined) element.textContent = Translator.translateText(text);
     return element;
 }
 
@@ -18,7 +19,7 @@ function append(parent, children) {
 }
 
 function setText(element, text) {
-    element.textContent = text;
+    element.textContent = Translator.translateText(text);
 }
 
 function clearInput(input) {
@@ -82,18 +83,18 @@ function VaultUI() {
 
     function renderLoading() {
         resetSection();
-        append(activeSection, [make(activeSection.ownerDocument, 'h2', '保险库'), make(activeSection.ownerDocument, 'p', '正在检查保险库状态…')]);
+        append(activeSection, [make(activeSection.ownerDocument, 'h2', 'Vault'), make(activeSection.ownerDocument, 'p', 'Checking Vault status…')]);
     }
 
     function renderError(error) {
         resetSection();
-        append(activeSection, [make(activeSection.ownerDocument, 'h2', '保险库'), make(activeSection.ownerDocument, 'p', '无法读取保险库状态：' + ((error && error.message) || '未知错误'))]);
+        append(activeSection, [make(activeSection.ownerDocument, 'h2', 'Vault'), make(activeSection.ownerDocument, 'p', 'Could not read Vault status: ' + ((error && error.message) || 'Unknown error'))]);
     }
 
     function renderSetup() {
         var document = activeSection.ownerDocument;
         resetSection();
-        append(activeSection, [make(document, 'h2', '设置加密保险库'), make(document, 'p', '保险库会把现有旧明文设置和凭据一次性迁入加密存储。旧 WebDAV 明文文件不会自动覆盖，之后需要显式迁移。忘记口令无法恢复。此提示不构成任何商店合规保证。')]);
+        append(activeSection, [make(document, 'h2', 'Set up encrypted Vault'), make(document, 'p', 'The Vault migrates existing legacy plaintext settings and credentials into encrypted storage once. Legacy plaintext WebDAV files are not overwritten automatically; migration must be explicit. Forgotten passphrases cannot be recovered. This notice is not a claim of store compliance.')]);
 
         var form = make(document, 'form');
         var passphrase = make(document, 'input');
@@ -106,16 +107,16 @@ function VaultUI() {
         confirmation.minLength = MIN_PASSPHRASE_LENGTH;
         passphrase.required = true;
         confirmation.required = true;
-        var passLabel = make(document, 'label', '新保险库口令（至少12个字符）');
-        var confirmLabel = make(document, 'label', '再次输入保险库口令');
+        var passLabel = make(document, 'label', 'New Vault passphrase (at least 12 characters)');
+        var confirmLabel = make(document, 'label', 'Confirm Vault passphrase');
         passLabel.appendChild(passphrase);
         confirmLabel.appendChild(confirmation);
         var risk = make(document, 'input');
         risk.type = 'checkbox';
         risk.required = true;
-        var riskLabel = make(document, 'label', '我理解：忘记口令无法恢复，且旧 WebDAV 明文文件不会自动覆盖。');
+        var riskLabel = make(document, 'label', 'I understand: forgotten passphrases cannot be recovered, and legacy plaintext WebDAV files are not automatically overwritten.');
         riskLabel.insertBefore(risk, riskLabel.firstChild || null);
-        var submit = make(document, 'button', '创建并加密保险库');
+        var submit = make(document, 'button', 'Create and encrypt Vault');
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
@@ -125,31 +126,31 @@ function VaultUI() {
         form.addEventListener('submit', function(event) {
             event.preventDefault();
             if(passphrase.value.length < MIN_PASSPHRASE_LENGTH) {
-                setText(message, '口令至少需要12个字符。');
+                setText(message, 'The passphrase must be at least 12 characters.');
                 return;
             }
             if(passphrase.value !== confirmation.value) {
                 clearInput(passphrase);
                 clearInput(confirmation);
-                setText(message, '两次输入的口令不一致。');
+                setText(message, 'The passphrases do not match.');
                 return;
             }
             if(!risk.checked) {
                 clearInput(passphrase);
                 clearInput(confirmation);
-                setText(message, '请先勾选不可恢复风险确认。');
+                setText(message, 'Confirm the unrecoverable-passphrase risk before continuing.');
                 return;
             }
             var operation = activeVault.create(passphrase.value);
             clearInput(passphrase);
             clearInput(confirmation);
             setBusy(form, true);
-            setText(message, '正在创建加密保险库…');
+            setText(message, 'Creating encrypted Vault…');
             return operation.then(function() {
                 renderUnlocked();
             }).catch(function(error) {
                 return activeVault.isConfigured().then(function(configured) {
-                    if(!configured) { setBusy(form, false); setText(message, (error && error.message) || '创建保险库失败。'); return; }
+                    if(!configured) { setBusy(form, false); setText(message, (error && error.message) || 'Could not create the Vault.'); return; }
                     recoverPublication(error);
                 }).catch(renderError);
             });
@@ -159,15 +160,15 @@ function VaultUI() {
     function renderLocked() {
         var document = activeSection.ownerDocument;
         resetSection();
-        append(activeSection, [make(document, 'h2', '本页保险库已锁定'), make(document, 'p', '本页认证和同步已暂停。锁定不能撤销浏览器已缓存的认证或服务端会话。')]);
+        append(activeSection, [make(document, 'h2', 'Vault locked on this page'), make(document, 'p', 'Authentication and sync on this page are paused. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.')]);
         var form = make(document, 'form');
         var input = make(document, 'input');
         input.type = 'password';
         input.autocomplete = 'current-password';
         input.required = true;
-        var label = make(document, 'label', '保险库口令');
+        var label = make(document, 'label', 'Vault passphrase');
         label.appendChild(input);
-        var submit = make(document, 'button', '解锁保险库');
+        var submit = make(document, 'button', 'Unlock Vault');
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
@@ -176,13 +177,13 @@ function VaultUI() {
         form.addEventListener('submit', function(event) {
             event.preventDefault();
             if(!input.value) {
-                setText(message, '请输入保险库口令。');
+                setText(message, 'Enter the Vault passphrase.');
                 return;
             }
             var operation = activeVault.unlock(input.value);
             clearInput(input);
             setBusy(form, true);
-            setText(message, '正在解锁…');
+            setText(message, 'Unlocking…');
             return operation.then(function() {
                 renderUnlocked();
             }).catch(function(error) {
@@ -195,25 +196,25 @@ function VaultUI() {
         if(error && error.recoveryLocked === false) { renderLockFailure(error); return; }
         if(activeVault.isUnlocked()) renderUnlocked(); else renderLocked();
         lockNotice.hidden = false;
-        setText(lockNotice, (error && error.recoveryLocked === true ? '加密保险库和迁移数据已保留，本次解锁未完成；请用同一口令解锁。' : '') + ((error && error.message) || '操作失败。'));
+        setText(lockNotice, (error && error.recoveryLocked === true ? Translator.translate('vault_recovery_notice') + ' ' : '') + Translator.translateText((error && error.message) || 'The operation failed.'));
     }
 
     function renderLockPending() {
         resetSection();
-        append(activeSection, [make(activeSection.ownerDocument, 'h2', '正在撤销全局解锁状态'),
-            make(activeSection.ownerDocument, 'p', '本页已停止使用凭据，正在确认其他页面、后台和会话密钥的撤销。尚未确认全局锁定成功。')]);
+        append(activeSection, [make(activeSection.ownerDocument, 'h2', 'Revoking global unlock state'),
+            make(activeSection.ownerDocument, 'p', 'This page has stopped using credentials and is confirming revocation across other pages, the background process and session keys. Global lock has not yet been confirmed.')]);
     }
 
     function renderLockFailure(error) {
         lockFailure = error;
         resetSection();
         lockNotice.hidden = false;
-        setText(lockNotice, '全局锁定未完成：' + ((error && error.message) || '无法确认全局撤销。'));
-        var retry = make(activeSection.ownerDocument, 'button', '重试全局锁定');
+        setText(lockNotice, 'Global lock is incomplete: ' + ((error && error.message) || 'Global revocation could not be confirmed.'));
+        var retry = make(activeSection.ownerDocument, 'button', 'Retry global lock');
         retry.type = 'button';
         retry.addEventListener('click', startLock);
-        append(activeSection, [make(activeSection.ownerDocument, 'h2', '全局锁定未完成'),
-            make(activeSection.ownerDocument, 'p', '本页保持暂停且不恢复凭据，但不能把当前页面状态当作其他页面、后台或会话密钥已清除的证明。请重试；未成功前不要继续使用扩展。'), retry]);
+        append(activeSection, [make(activeSection.ownerDocument, 'h2', 'Global lock is incomplete'),
+            make(activeSection.ownerDocument, 'p', 'This page remains paused and will not restore credentials, but its state cannot prove that other pages, the background process or session keys were cleared. Retry; do not use the extension until this succeeds.'), retry]);
     }
 
     function startLock() {
@@ -240,11 +241,11 @@ function VaultUI() {
         lockNotice.hidden = true;
         setText(lockNotice, '');
         resetSection();
-        var lock = make(document, 'button', '锁定保险库');
+        var lock = make(document, 'button', 'Lock Vault');
         lock.type = 'button';
-        var status = make(document, 'p', '保险库已解锁。认证和同步可以运行。');
+        var status = make(document, 'p', 'The Vault is unlocked. Authentication and sync can run.');
         lock.addEventListener('click', startLock);
-        append(activeSection, [make(document, 'h2', '保险库已解锁'), status, lock]);
+        append(activeSection, [make(document, 'h2', 'Vault unlocked'), status, lock]);
     }
 
     function setBusy(form, busy) {

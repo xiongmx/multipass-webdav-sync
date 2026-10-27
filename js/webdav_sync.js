@@ -1,6 +1,8 @@
 /*global Promise, Uint8Array, globalThis*/
 'use strict';
 
+var Translator = require('./translator');
+
 var WebDAVSync = function() {
     var SETTINGS_KEY = 'multipassWebdavSettings';
     var META_KEY = 'multipassWebdavSyncMeta';
@@ -43,7 +45,7 @@ var WebDAVSync = function() {
 
     function setStatus(message, isError) {
         if(!statusElement) return;
-        statusElement.textContent = message;
+        statusElement.textContent = Translator.translateText(message);
         statusElement.className = isError ? 'webdav-status error' : 'webdav-status';
     }
 
@@ -742,7 +744,7 @@ var WebDAVSync = function() {
                     if(!remote.etag || /^W\//i.test(remote.etag)) throw new Error('The WebDAV server must return a strong ETag before pulling.');
                     return parseSyncDocument(remote.document).then(function(remoteDocument) {
                         var count = Object.keys(remoteDocument.credentials).length;
-                        if(!window.confirm('Replace this device’s credentials with ' + count + ' entries from the encrypted WebDAV file? A local backup will be kept.')) return;
+                        if(!window.confirm(Translator.translateText('Replace this device’s credentials with ' + count + ' entries from the encrypted WebDAV file? A local backup will be kept.'))) return;
                         return readRemote(context.settings).then(function(latestRemote) {
                             if(!latestRemote.exists || latestRemote.etag !== remote.etag || latestRemote.contentHash !== remote.contentHash) throw new Error('The remote file changed while you were confirming. Nothing was replaced; review it and retry.');
                             return fingerprint(getLocalCredentials()).then(function(currentDigest) {
@@ -766,7 +768,7 @@ var WebDAVSync = function() {
             return fingerprint(localCredentials).then(function(localDigest) {
                 return readRemote(Object.assign({}, context.settings, { allowLegacyMigration: true })).then(function(remote) {
                     if(remote.exists && remote.legacy) {
-                        if(!window.confirm('The remote file is legacy plaintext. Download/retain the local encrypted backup, then explicitly migrate it by replacing it with encrypted ciphertext? The legacy remote will not be preserved on the server.')) return;
+                        if(!window.confirm(Translator.translateText('The remote file is legacy plaintext. Download/retain the local encrypted backup, then explicitly migrate it by replacing it with encrypted ciphertext? The legacy remote will not be preserved on the server.'))) return;
                     }
                     if(remote.exists && (!remote.etag || /^W\//i.test(remote.etag))) {
                         throw new Error('The WebDAV server must return a strong ETag. The existing remote file will not be overwritten.');
@@ -775,7 +777,7 @@ var WebDAVSync = function() {
                     var promptText = remote.exists ?
                         'Replace the current WebDAV file with this device’s ' + count + ' entries? The previous remote file will be saved as an encrypted local backup. The server stores encrypted ciphertext.' :
                         'Create a new encrypted WebDAV file with this device’s ' + count + ' entries?';
-                    if(!window.confirm(promptText)) return;
+                    if(!window.confirm(Translator.translateText(promptText))) return;
                     var backup = remote.exists ? addRemoteBackup('Before manual push', remote.document) : Promise.resolve();
                     return backup.then(function() {
                         return fingerprint(getLocalCredentials()).then(function(currentDigest) {
@@ -855,7 +857,7 @@ var WebDAVSync = function() {
     }
 
     function revokeSyncAuthorization() {
-        if(!window.confirm('Revoke WebDAV sync authorization? This stops automatic sync and clears the saved WebDAV password, sync baseline, backups, and consent on this device. Remote files and downloaded files are not deleted.')) return Promise.resolve();
+        if(!window.confirm(Translator.translateText('Revoke WebDAV sync authorization? This stops automatic sync and clears the saved WebDAV password, sync baseline, backups, and consent on this device. Remote files and downloaded files are not deleted.'))) return Promise.resolve();
         stopForLock();
         return localRemove([SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]).then(function() {
             return configureAutoSyncAlarm(0);
@@ -867,7 +869,7 @@ var WebDAVSync = function() {
     }
 
     function clearAllSensitiveData() {
-        if(!window.confirm('Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.')) return Promise.resolve();
+        if(!window.confirm(Translator.translateText('Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.'))) return Promise.resolve();
         stopForLock();
         var clearCredentials = vault().isUnlocked() && credentialStorage && typeof credentialStorage.clearAll === 'function' ? credentialStorage.clearAll() : Promise.resolve();
         return clearCredentials.then(function() { return localRemove(['credentials', 'temporary-credentials', 'password-real', 'password-stars', SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]); })
