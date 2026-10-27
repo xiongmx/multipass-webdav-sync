@@ -176,7 +176,7 @@ var OptionPanel = (function() {
 }());
 
 document.addEventListener('DOMContentLoaded', function() {
-    VaultUI.init();
+    VaultUI.init({ container: document.getElementById('vault-ui-container') });
     OptionPanel.init();
     Credentials.init();
     WebDAVSync.init(CredentialStorage);

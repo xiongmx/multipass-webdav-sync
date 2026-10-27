@@ -44,12 +44,11 @@
         <h1>MultiPass WebDAV Sync</h1>
 
         <p>MultiPass WebDAV Sync is an unofficial, independently maintained fork of MultiPass that adds optional, client-side-encrypted synchronization through your own HTTPS WebDAV server. This WebDAV-sync-enabled version is separate from the original MultiPass extension and is not an official Microsoft product.</p>
-        <p>It stores HTTPS HTTP Basic authentication rules in an encrypted local vault.</p>
+        <p>It stores HTTP and HTTPS Basic authentication rules in an encrypted local vault.</p>
 
-        <p>When you browse a website that requires HTTP basic authentication, if the URL match against one of
-           the regular expression, the credentials will be automatically sent.</p>
+        <p>When a website's URL matches one of your rules and it issues a Basic authentication challenge, the corresponding credentials are sent to that website.</p>
 
-        <p>HTTP websites, proxy-authentication challenges, and non-Basic challenges are rejected. The WebDAV provider can still see its account authorization, endpoint, request timing and size, and metadata such as ETags.</p>
+        <p>Rules can match HTTP and HTTPS websites. Plain HTTP does not encrypt Basic credentials in transit, so prefer HTTPS and use HTTP only with trusted sites. Proxy-authentication and non-Basic challenges are rejected. The WebDAV provider can still see its account authorization, endpoint, request timing and size, and metadata such as ETags.</p>
         <p>The extension has not been independently security-audited. The primary package targets Chromium Manifest V3; Edge Android Stable has not been verified on a real device and Android support is not claimed. Firefox and Firefox for Android builds are experimental.</p>
         <p><a href="https://xiongmx.github.io/multipass-webdav-sync/privacy-policy.html">Privacy policy</a> · <a href="https://github.com/xiongmx/multipass-webdav-sync">Source repository</a></p>
 

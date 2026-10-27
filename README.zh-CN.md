@@ -1,6 +1,6 @@
 # MultiPass WebDAV Sync
 
-按 URL 规则处理 HTTPS 网站的 HTTP Basic 认证，提供加密的本地保险库及可选的加密 WebDAV 同步。
+按 URL 规则处理 HTTP 和 HTTPS 网站的 HTTP Basic 认证，提供加密的本地保险库及可选的加密 WebDAV 同步。
 
 这是基于 [MultiPass for HTTP Basic Authentication](https://github.com/krtek4/MultiPass) 的非官方 fork，发布者为 **xiongmx**。上游项目不是本 fork 的发布者；保留上游 WTFPL v2 署名与许可信息。
 
@@ -9,11 +9,11 @@
 ## 使用方式
 
 1. 创建保险库，并妥善记住密码；忘记后没有恢复后门。
-2. 为受信任的 HTTPS 网站添加 URL 匹配规则及 HTTP Basic 用户名和密码。
-3. 每次重启浏览器后解锁保险库。网站发出匹配的源站 Basic 认证挑战时，扩展才会通过 HTTPS 提供对应凭据。
+2. 为受信任的网站添加 URL 匹配规则及 HTTP Basic 用户名和密码。普通 HTTP 下凭据不会加密传输；请优先使用 HTTPS。
+3. 每次重启浏览器后解锁保险库。网站发出匹配的源站 Basic 认证挑战时，扩展会按该网站使用的 HTTP 或 HTTPS 协议提供对应凭据。
 4. 如需 WebDAV 同步，在每台设备上分别授权，并填写你自己的 HTTPS WebDAV 文件地址和账号。服务端需要支持 GET、PUT、条件请求及强 ETag。
 
-扩展拒绝 HTTP 网站、代理认证及非 Basic 认证挑战，不读取网页正文或表单内容。
+站点规则可匹配 HTTP 和 HTTPS。扩展拒绝代理认证及非 Basic 认证挑战，不读取网页正文或表单内容。
 
 ## 保险库与同步
 

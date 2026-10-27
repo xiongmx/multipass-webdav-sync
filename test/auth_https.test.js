@@ -108,13 +108,11 @@ async function main() {
 
     try {
         var policy = require(policyPath);
-        assert.strictEqual(policy.DEFAULT_RULE, '^https://');
-        assert.strictEqual(policy.isHttpsUrl('https://example.test/path'), true);
+        assert.strictEqual(policy.DEFAULT_RULE, '^https?://');
+        assert.strictEqual(policy.isWebsiteUrl('https://example.test/path'), true);
+        assert.strictEqual(policy.isWebsiteUrl('http://example.test/path'), true);
+        assert.strictEqual(policy.isWebsiteUrl('http://localhost:8080/path'), true);
         [
-            'http://example.test/path',
-            'http://localhost:8080/path',
-            'http://127.0.0.1/path',
-            'http://[::1]/path',
             'ftp://example.test/path',
             'httpsx://example.test/path',
             'xhttps://example.test/path',
@@ -124,16 +122,19 @@ async function main() {
             null,
             undefined
         ].forEach(function(url) {
-            assert.strictEqual(policy.isHttpsUrl(url), false, 'must reject URL: ' + String(url));
+            assert.strictEqual(policy.isWebsiteUrl(url), false, 'must reject URL: ' + String(url));
         });
         assert.strictEqual(policy.matchesRule('^https://secure\\.test/', 'https://secure.test/path'), true);
-        assert.strictEqual(policy.matchesRule('.*', 'http://localhost:8080/path'), false);
+        assert.strictEqual(policy.matchesRule('^http://plain\\.test/', 'http://plain.test/path'), true);
+        assert.strictEqual(policy.matchesRule('.*', 'http://localhost:8080/path'), true);
+        assert.strictEqual(policy.matchesRule('.*', 'ftp://example.test/path'), false);
         assert.strictEqual(policy.matchesRule('[', 'https://secure.test/path'), false);
         assert.doesNotThrow(function() { policy.matchesRule('[', 'https://secure.test/path'); });
 
         var eligible = { url: 'https://secure.test/path', scheme: 'BaSiC', isProxy: false };
         assert.strictEqual(policy.isEligibleChallenge(eligible), true);
-        assert.strictEqual(policy.isEligibleChallenge({ url: 'http://secure.test/path', scheme: 'basic', isProxy: false }), false);
+        assert.strictEqual(policy.isEligibleChallenge({ url: 'http://plain.test/path', scheme: 'basic', isProxy: false }), true);
+        assert.strictEqual(policy.isEligibleChallenge({ url: 'ftp://plain.test/path', scheme: 'basic', isProxy: false }), false);
         assert.strictEqual(policy.isEligibleChallenge({ url: 'https://secure.test/path', scheme: 'digest', isProxy: false }), false);
         assert.strictEqual(policy.isEligibleChallenge({ url: 'https://secure.test/path', scheme: 'basic', isProxy: true }), false);
         ['url', 'scheme', 'isProxy'].forEach(function(field) {
@@ -146,7 +147,7 @@ async function main() {
         var CredentialStorage = require(credentialPath);
         await CredentialStorage.replaceAll([
             { url: '^https://secure\\.test/', username: 'alice', password: 'secret', priority: 1 },
-            { url: '.*', username: 'broad', password: 'must-not-leak', priority: 2 }
+            { url: '^http://plain\\.test/', username: 'bob', password: 'http-secret', priority: 1 }
         ]);
         assert.strictEqual(CredentialStorage.getCredentials({ url: 'http://example.test/path' }).length, 0);
         assert.strictEqual(CredentialStorage.getCredentials({ url: 'http://localhost:8080/path' }).length, 0);
@@ -158,6 +159,7 @@ async function main() {
             assert.deepStrictEqual(CredentialStorage.getCredentials({}), []);
         });
         assert.strictEqual(CredentialStorage.getCredentials({ url: 'https://secure.test/path' })[0].username, 'alice');
+        assert.strictEqual(CredentialStorage.getCredentials({ url: 'http://plain.test/path' })[0].username, 'bob');
         assert.strictEqual(CredentialStorage.getCredential('^https\\.test/'), null);
         assert.strictEqual(CredentialStorage.getCredential('^https://secure\\.test/').password, 'secret');
         var webdavStub = { initBackground: function() { return Promise.resolve(); } };
@@ -165,10 +167,8 @@ async function main() {
         require(extensionPath);
         assert.strictEqual(chrome.__state.authCalls.length, 1);
         assert.strictEqual(chrome.__state.completedCalls.length, 1);
-        assert.deepStrictEqual(chrome.__state.authCalls[0].filter, { urls: ['https://*/*'] });
-        assert.deepStrictEqual(chrome.__state.completedCalls[0].filter, { urls: ['https://*/*'] });
-        assert.strictEqual(chrome.__state.authCalls[0].filter.urls.indexOf('<all_urls>'), -1);
-        assert.strictEqual(chrome.__state.completedCalls[0].filter.urls.indexOf('<all_urls>'), -1);
+        assert.deepStrictEqual(chrome.__state.authCalls[0].filter, { urls: ['http://*/*', 'https://*/*'] });
+        assert.deepStrictEqual(chrome.__state.completedCalls[0].filter, { urls: ['http://*/*', 'https://*/*'] });
 
         assert.deepStrictEqual(chrome.__state.authCalls[0].extraInfoSpec, ['asyncBlocking']);
         var listener = chrome.__state.authCalls[0].callback;
@@ -176,7 +176,9 @@ async function main() {
         assert.deepStrictEqual(await auth({ url: 'https://secure.test/path', scheme: 'basic', isProxy: false, tabId: 1, requestId: 'https-1' }), {
             authCredentials: { username: 'alice', password: 'secret' }
         });
-        assert.deepStrictEqual(await auth({ url: 'http://example.test/path', scheme: 'basic', isProxy: false, tabId: 1, requestId: 'http-1' }), {});
+        assert.deepStrictEqual(await auth({ url: 'http://plain.test/path', scheme: 'basic', isProxy: false, tabId: 1, requestId: 'http-1' }), {
+            authCredentials: { username: 'bob', password: 'http-secret' }
+        });
         assert.deepStrictEqual(await auth({ url: 'https://secure.test/path', scheme: 'basic', isProxy: true, tabId: 1, requestId: 'proxy-1' }), {});
         assert.deepStrictEqual(await auth({ url: 'https://secure.test/path', scheme: 'digest', isProxy: false, tabId: 1, requestId: 'digest-1' }), {});
         assert.deepStrictEqual(await auth({ url: 'https://secure.test/path', scheme: 'basic', tabId: 1, requestId: 'missing-proxy-1' }), {});
@@ -193,7 +195,7 @@ async function main() {
         assert.strictEqual(CredentialStorage.getCredential('^https://secure\\.test/'), null);
         await assert.rejects(CredentialStorage.addCredential({ url: '^https://locked.test/', username: 'u', password: 'p' }), /locked/);
 
-        console.log('HTTPS auth policy tests passed.');
+        console.log('HTTP/HTTPS auth policy tests passed.');
     } finally {
         clearModules();
         global.chrome = originalChrome;

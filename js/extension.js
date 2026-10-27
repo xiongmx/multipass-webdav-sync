@@ -107,13 +107,13 @@ var Extension = function () {
                 var timer = setTimeout(function() { respond({}); }, 5000);
                 function respond(value) { if(replied) return; replied = true; clearTimeout(timer); callback(value); }
                 retrieveWhenReady(status).then(respond, function() { respond({}); });
-            }, {urls: ['https://*/*']}, ['asyncBlocking']);
+            }, {urls: ['http://*/*', 'https://*/*']}, ['asyncBlocking']);
         } else {
             // The legacy MV2 package is Firefox Android, which accepts a Promise in blocking mode.
-            chrome.webRequest.onAuthRequired.addListener(retrieveWhenReady, {urls: ['https://*/*']}, ['blocking']);
+            chrome.webRequest.onAuthRequired.addListener(retrieveWhenReady, {urls: ['http://*/*', 'https://*/*']}, ['blocking']);
         }
 
-        chrome.webRequest.onCompleted.addListener(suggester, {urls: ['https://*/*']});
+        chrome.webRequest.onCompleted.addListener(suggester, {urls: ['http://*/*', 'https://*/*']});
 
         chrome.tabs.onUpdated.addListener(showBadgeForTabId);
         chrome.tabs.onActivated.addListener(showBadgeForStatus);

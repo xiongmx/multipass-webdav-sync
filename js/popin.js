@@ -2,7 +2,6 @@
 
 var Credentials = require('./credentials');
 var AuthPolicy = require('./auth_policy');
-var VaultUI = require('./vault_ui');
 
 var Popin = function() {
     var only_match = 'only-match';
@@ -60,7 +59,6 @@ var Popin = function() {
 }();
 
 document.addEventListener('DOMContentLoaded', function () {
-    VaultUI.init();
     Popin.init();
     Credentials.init();
 });

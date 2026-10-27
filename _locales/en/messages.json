@@ -127,8 +127,12 @@
         "message": "Like the extension? A small donation would be really nice:",
         "description": "Text accompanying the donation button"
     },
-    "https_only_notice": {
-        "message": "Website authentication uses HTTPS only. HTTP (including localhost) never receives credentials. Existing HTTP rules remain stored but are inactive.",
+    "http_basic_notice": {
+        "message": "Site rules can match HTTP or HTTPS. Basic credentials sent over plain HTTP are not encrypted. Use HTTP only with trusted sites; HTTPS is recommended.",
+        "description": "User-visible extension UI message."
+    },
+    "site_rule_default_notice": {
+        "message": "Choose a narrower site rule; the default ^https?:// rule is not submitted.",
         "description": "User-visible extension UI message."
     },
     "import_legacy_warning": {
@@ -269,10 +273,6 @@
     },
     "legacy_import_confirmation": {
         "message": "This is a legacy plaintext file. Import it only if you trust its source; it will be encrypted in the Vault. The original file will not be deleted automatically. Continue with this one-time migration?",
-        "description": "User-visible extension UI message."
-    },
-    "default_https_rule_warning": {
-        "message": "Choose a narrower HTTPS rule; the default ^https:// rule is not submitted.",
         "description": "User-visible extension UI message."
     },
     "vault_title": {
@@ -752,7 +752,7 @@
         "description": "User-visible extension UI message."
     },
     "website_auth_warning": {
-        "message": "Website Basic authentication is HTTPS-only. HTTP challenges, including localhost, proxy authentication and non-Basic challenges never receive credentials. Use precise rules for trusted HTTPS origins.",
+        "message": "Website Basic authentication follows the matching rule on HTTP or HTTPS. On plain HTTP, credentials are sent without encryption. Use only trusted HTTPS origins; proxy and non-Basic challenges remain unsupported.",
         "description": "User-visible extension UI message."
     },
     "vault_no_web_locks": {

@@ -20,7 +20,8 @@
         "default_popup": "popin.html"
     },
     "options_ui": {
-        "page": "options.html"
+        "page": "options.html",
+        "open_in_tab": true
     },
     "background": {
         "scripts": [
@@ -34,6 +35,7 @@
         "storage",
         "alarms",
         "tabs",
+        "http://*/*",
         "https://*/*"
     ],
     "browser_specific_settings": {

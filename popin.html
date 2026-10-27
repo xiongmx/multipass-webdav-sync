@@ -27,8 +27,8 @@
                     <tr>
                         <td class="url">
                             <label for="url" data-i18n="url_regexp">Url (regexp)</label>
-                            <input type="text" name="url" id="url" value="^https://" required="true">
-                            <span data-i18n="https_only_notice">Website authentication uses HTTPS only. HTTP (including localhost) never receives credentials. Existing HTTP rules remain stored but are inactive.</span>
+                            <input type="text" name="url" id="url" value="^https?://" required="true">
+                            <span data-i18n="http_basic_notice">Site rules can match HTTP or HTTPS. On plain HTTP, Basic credentials are sent without encryption; use only trusted HTTPS sites.</span>
                         </td>
                         <td class="username">
                             <label for="username" data-i18n="username">Username</label>

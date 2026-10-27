@@ -1,6 +1,6 @@
 # MultiPass WebDAV Sync
 
-HTTPS-only HTTP Basic authentication using URL rules, with an encrypted local vault and optional encrypted WebDAV synchronization.
+URL-rule-based HTTP Basic authentication for HTTP and HTTPS websites, with an encrypted local vault and optional encrypted WebDAV synchronization.
 
 This is an unofficial fork of [MultiPass for HTTP Basic Authentication](https://github.com/krtek4/MultiPass), published by **xiongmx**. The upstream project is not the publisher of this fork. The upstream WTFPL v2 attribution is retained.
 
@@ -9,11 +9,11 @@ This is an unofficial fork of [MultiPass for HTTP Basic Authentication](https://
 ## Use
 
 1. Create a vault with a password you can remember. There is no password-recovery backdoor.
-2. Add URL-matching rules and the HTTP Basic credentials for trusted HTTPS websites.
-3. Unlock the vault after restarting the browser. A matching origin-server Basic authentication challenge can then receive the saved credentials over HTTPS.
+2. Add URL-matching rules and HTTP Basic credentials for trusted websites. On plain HTTP, credentials are sent without transport encryption; prefer HTTPS.
+3. Unlock the vault after restarting the browser. A matching origin-server Basic authentication challenge can receive saved credentials using the challenged website's HTTP or HTTPS protocol.
 4. Optionally authorize WebDAV synchronization separately on each device and configure your own HTTPS WebDAV file URL and account. The server must support GET, PUT, conditional requests, and strong ETags.
 
-HTTP websites, proxy-authentication challenges, and non-Basic authentication challenges are rejected. The extension does not read page text or form contents.
+Rules can match HTTP and HTTPS websites. Proxy-authentication and non-Basic challenges are rejected. The extension does not read page text or form contents.
 
 ## Vault and synchronization
 

@@ -457,7 +457,7 @@ table.form-table td output ul {
     }
 }
 
-/* The Vault panel is shared by options and popup; never require a wide desktop viewport. */
+/* The Vault panel appears only on the options page, beside WebDAV settings. */
 #vault-ui {
     padding: 20px;
     margin-bottom: 24px;
@@ -470,7 +470,11 @@ table.form-table td output ul {
 #vault-ui p { line-height: 1.65; }
 #vault-ui form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 #vault-ui form > label { display: block; flex: 1 1 260px; min-width: 0; line-height: 1.6; }
-#vault-ui input[type="password"] { display: block; width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #97abc9; border-radius: 6px; }
+#vault-ui .vault-passphrase-field { display: block; flex: 1 1 260px; min-width: 0; line-height: 1.6; }
+#vault-ui .vault-passphrase-field > label { display: block; }
+#vault-ui .vault-passphrase-control { display: flex; gap: 8px; align-items: stretch; width: 100%; margin: 6px 0; }
+#vault-ui input[type="password"], #vault-ui input[type="text"] { display: block; flex: 1 1 auto; width: 100%; min-width: 0; padding: 10px; margin: 0; border: 1px solid #97abc9; border-radius: 6px; }
+#vault-ui .vault-passphrase-control button { flex: 0 0 auto; }
 #vault-ui input[type="checkbox"] { margin-right: 8px; }
 #vault-ui button { padding: 9px 18px; border: 1px solid #345d9d; border-radius: 6px; background: #345d9d; color: white; min-height: 42px; }
 #vault-ui button:disabled { opacity: .6; }
@@ -478,5 +482,5 @@ table.form-table td output ul {
 .credential-fields label > span:not([data-i18n]) { display: block; margin-top: 6px; color: #725116; font-size: .85em; font-weight: normal; line-height: 1.5; }
 @media (max-width: 640px) {
     #vault-ui { padding: 14px; margin-bottom: 16px; }
-    #vault-ui form > label, #vault-ui form > button { flex-basis: 100%; width: 100%; }
+    #vault-ui form > label, #vault-ui form > .vault-passphrase-field, #vault-ui form > button { flex-basis: 100%; width: 100%; }
 }

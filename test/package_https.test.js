@@ -45,19 +45,20 @@ function assertManifestPolicy(packagePath) {
     assert.strictEqual(manifest.name, '__MSG_extName__', packagePath + ' manifest name');
     assert.strictEqual(manifest.description, '__MSG_extDescription__', packagePath + ' manifest description');
     assert((manifest.permissions || []).includes('alarms'), packagePath + ' must declare alarms for periodic sync');
+    assert.strictEqual(manifest.options_ui.open_in_tab, true, packagePath + ' options page must open in a full tab');
     if (Object.prototype.hasOwnProperty.call(manifest, 'host_permissions')) {
-        assert.deepStrictEqual(manifest.host_permissions, ['https://*/*'], packagePath + ' host_permissions');
+        assert.deepStrictEqual(manifest.host_permissions, ['http://*/*', 'https://*/*'], packagePath + ' host_permissions');
     }
     if (manifest.manifest_version === 2) {
         var urlPermissions = (manifest.permissions || []).filter(function(permission) {
             return /^https?:\/\//i.test(permission) || permission === '<all_urls>';
         });
-        assert.deepStrictEqual(urlPermissions, ['https://*/*'], packagePath + ' MV2 URL permissions');
+        assert.deepStrictEqual(urlPermissions, ['http://*/*', 'https://*/*'], packagePath + ' MV2 URL permissions');
     }
     ['host_permissions', 'permissions'].forEach(function(field) {
         (manifest[field] || []).forEach(function(permission) {
             assert.notStrictEqual(permission, '<all_urls>', packagePath + ' must not request <all_urls>');
-            assert.strictEqual(/^http:\/\//i.test(permission), false, packagePath + ' must not request HTTP URL patterns');
+            assert.strictEqual(/^file:|^ftp:/i.test(permission), false, packagePath + ' must not request unrelated URL schemes');
         });
     });
 }
@@ -66,12 +67,18 @@ function assertHtmlPolicy(packagePath, member) {
     var html = unzipText(packagePath, member);
     var input = html.match(/<input\b[^>]*\bid=["']url["'][^>]*>/i);
     assert.ok(input, packagePath + ' ' + member + ' must have an id=url input');
-    assert.ok(/\bvalue=["']\^https:\/\/["']/i.test(input[0]), packagePath + ' ' + member + ' id=url must have value=^https://');
+    assert.ok(/\bvalue=["']\^https\?:\/\/["']/i.test(input[0]), packagePath + ' ' + member + ' id=url must have value=^https?://');
     assert.ok(/<meta\s+charset=[\"']utf-8[\"']\s*>/i.test(html), packagePath + ' ' + member + ' must declare UTF-8');
-    var warningKey = member === 'options.html' ? 'website_auth_warning' : 'https_only_notice';
-    assert.ok(html.indexOf('data-i18n=\"' + warningKey + '\"') !== -1 || html.indexOf("data-i18n='" + warningKey + "'") !== -1, packagePath + ' ' + member + ' must localize the HTTPS warning');
+    var warningKey = member === 'options.html' ? 'website_auth_warning' : 'http_basic_notice';
+    assert.ok(html.indexOf('data-i18n="' + warningKey + '"') !== -1 || html.indexOf("data-i18n='" + warningKey + "'") !== -1, packagePath + ' ' + member + ' must localize the HTTP credential warning');
     var chinese = JSON.parse(unzipText(packagePath, '_locales/zh_CN/messages.json'));
-    assert.ok(chinese[warningKey] && /仅.{0,12}HTTPS|HTTPS.{0,12}仅/i.test(chinese[warningKey].message), packagePath + ' ' + member + ' must include a Simplified Chinese HTTPS-only notice');
+    assert.ok(chinese[warningKey] && /不会加密|未加密/.test(chinese[warningKey].message), packagePath + ' ' + member + ' must warn that HTTP Basic credentials are not encrypted');
+    if (member === 'options.html') {
+        var webdav = html.indexOf('data-i18n="webdav_warning"');
+        var vault = html.indexOf('id="vault-ui-container"');
+        var clear = html.indexOf('data-i18n="clear_section"');
+        assert(webdav >= 0 && webdav < vault && vault < clear, packagePath + ' Vault controls must be beside WebDAV settings');
+    }
 }
 
 function hashKey(value) {
@@ -162,9 +169,8 @@ function tick() { return new Promise(function(resolve) { setImmediate(resolve); 
 async function settle() { await tick(); await tick(); await tick(); }
 
 var records = [
-    { url: '^https://', username: 'dummy-user', password: 'dummy-site-password', priority: 1 },
-    { url: '.*', username: 'broad-user', password: 'broad-site-password', priority: 2 },
-    { url: '^http://', username: 'old-http-user', password: 'old-http-password', priority: 3 }
+    { url: '^https://remote\\.test/', username: 'dummy-user', password: 'dummy-site-password', priority: 1 },
+    { url: '^http://remote\\.test/', username: 'http-user', password: 'dummy-http-password', priority: 1 }
 ];
 
 async function createEncryptedFixture() {
@@ -191,8 +197,7 @@ async function createEncryptedFixture() {
         var localJson = JSON.stringify(shared.local);
         assert.strictEqual(localJson.indexOf(PASSPHRASE), -1, 'local JSON must not contain the dummy passphrase');
         assert.strictEqual(localJson.indexOf('dummy-site-password'), -1, 'local JSON must not contain site passwords');
-        assert.strictEqual(localJson.indexOf('broad-site-password'), -1, 'local JSON must not contain broad passwords');
-        assert.strictEqual(localJson.indexOf('old-http-password'), -1, 'local JSON must not contain old HTTP passwords');
+        assert.strictEqual(localJson.indexOf('dummy-http-password'), -1, 'local JSON must not contain HTTP site passwords');
         assert.strictEqual(localJson.indexOf(SESSION_KEY), -1, 'root material must not be in local storage');
         assert.strictEqual(JSON.stringify(shared.session).indexOf(PASSPHRASE), -1, 'session must not contain the passphrase');
         return { local: clone(shared.local), session: clone(shared.session) };
@@ -221,16 +226,16 @@ async function executeBundle(packagePath, manifest, fixture) {
     await settle();
     assert.strictEqual(chrome.__state.auth.length, 1, packagePath + ' must register one auth listener');
     assert.strictEqual(chrome.__state.alarms.length, 1, packagePath + ' must register its periodic-sync alarm listener');
-    assert.deepStrictEqual(jsonValue(chrome.__state.auth[0].filter), { urls: ['https://*/*'] }, packagePath + ' auth filter');
-    assert.deepStrictEqual(jsonValue(chrome.__state.completed[0].filter), { urls: ['https://*/*'] }, packagePath + ' completed filter');
+    assert.deepStrictEqual(jsonValue(chrome.__state.auth[0].filter), { urls: ['http://*/*', 'https://*/*'] }, packagePath + ' auth filter');
+    assert.deepStrictEqual(jsonValue(chrome.__state.completed[0].filter), { urls: ['http://*/*', 'https://*/*'] }, packagePath + ' completed filter');
     assert.deepStrictEqual(jsonValue(chrome.__state.auth[0].extraInfoSpec), [manifest.manifest_version >= 3 ? 'asyncBlocking' : 'blocking']);
     function auth(status) {
         var listener = chrome.__state.auth[0].callback;
         return manifest.manifest_version >= 3 ? new Promise(function(resolve) { listener(status, resolve); }) : Promise.resolve(listener(status));
     }
     var base = { tabId: 7, requestId: 'request-' };
-    for(var url of ['http://remote.test/file', 'http://localhost:8080/file', 'http://127.0.0.1/file', 'http://[::1]/file']) {
-        assert.deepStrictEqual(jsonValue(await auth(Object.assign({}, base, { url: url, scheme: 'basic', isProxy: false }))), {}, packagePath + ' must reject ' + url);
+    for(var url of ['http://localhost:8080/file', 'http://127.0.0.1/file', 'http://[::1]/file']) {
+        assert.deepStrictEqual(jsonValue(await auth(Object.assign({}, base, { url: url, scheme: 'basic', isProxy: false }))), {}, packagePath + ' must not send credentials without a matching rule for ' + url);
     }
     for(var status of [
         { url: 'https://remote.test/file', scheme: 'basic', isProxy: true },
@@ -244,6 +249,9 @@ async function executeBundle(packagePath, manifest, fixture) {
     assert.deepStrictEqual(jsonValue(await auth(Object.assign({}, base, { url: 'https://remote.test/file', scheme: 'basic', isProxy: false }))), {
         authCredentials: { username: 'dummy-user', password: 'dummy-site-password' }
     }, packagePath + ' HTTPS Basic must return decrypted fixture credentials');
+    assert.deepStrictEqual(jsonValue(await auth(Object.assign({}, base, { url: 'http://remote.test/file', scheme: 'basic', isProxy: false }))), {
+        authCredentials: { username: 'http-user', password: 'dummy-http-password' }
+    }, packagePath + ' HTTP Basic must return decrypted credentials only for a matching HTTP rule');
 
     await chrome.storage.session.remove(SESSION_KEY, function() {});
     await settle();
@@ -274,9 +282,10 @@ async function main() {
         ['js/extension.js', 'js/option.js', 'js/popin.js'].forEach(function(member) {
             var source = unzipText(packagePath, member);
             assert.strictEqual(source.indexOf('<all_urls>'), -1, packagePath + ' ' + member + ' contains <all_urls>');
-            assert.strictEqual(source.indexOf('http://*/*'), -1, packagePath + ' ' + member + ' contains HTTP wildcard listener');
         });
         var extensionSource = unzipText(packagePath, 'js/extension.js');
+        assert.ok(extensionSource.includes('http://*/*') && extensionSource.includes('https://*/*'), packagePath + ' must listen only for HTTP and HTTPS websites');
+        assert.strictEqual(unzipText(packagePath, 'js/popin.js').indexOf('VaultUI requires document.body.'), -1, packagePath + ' popup must not bundle the Vault UI code');
         assert.ok(extensionSource.indexOf('multipass-vault-v1') !== -1, packagePath + ' must include the vault format marker');
         assert.ok(extensionSource.indexOf('vaultEncryptedValues') !== -1, packagePath + ' must include encrypted vault storage code');
         assert.ok(extensionSource.indexOf('multipass-webdav-plain-v1') !== -1, packagePath + ' must include WebDAV code');
@@ -284,7 +293,7 @@ async function main() {
         var manifest = JSON.parse(unzipText(packagePath, 'manifest.json'));
         await executeBundle(packagePath, manifest, fixture);
     }
-    console.log('Packaged HTTPS policy, Vault authentication, and WebDAV marker tests passed.');
+    console.log('Packaged HTTP/HTTPS auth policy, options-page layout, Vault authentication, and WebDAV marker tests passed.');
 }
 
 main().catch(function(error) {

@@ -26,6 +26,24 @@ function clearInput(input) {
     if(input) input.value = '';
 }
 
+function passwordControl(document, input) {
+    var control = make(document, 'div');
+    control.className = 'vault-passphrase-control';
+    var toggle = make(document, 'button');
+    toggle.type = 'button';
+    toggle.textContent = Translator.translate('show_hide_password');
+    toggle.setAttribute('aria-pressed', 'false');
+    toggle.setAttribute('aria-label', toggle.textContent);
+    toggle.addEventListener('click', function() {
+        var visible = input.type === 'password';
+        input.type = visible ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    });
+    control.appendChild(input);
+    control.appendChild(toggle);
+    return control;
+}
+
 function VaultUI() {
     var activeSection = null;
     var activeVault = null;
@@ -40,6 +58,7 @@ function VaultUI() {
         options = options || {};
         var document = options.document || (typeof window !== 'undefined' ? window.document : null);
         var vault = options.vault || Vault;
+        var container = options.container || (document && document.body);
         if(!document || !document.body) throw new Error('VaultUI requires document.body.');
         if(initialized) return activeSection;
 
@@ -51,7 +70,7 @@ function VaultUI() {
         lockNotice.setAttribute('role', 'alert');
         lockNotice.className = 'vault-lock-error';
         lockNotice.hidden = true;
-        document.body.insertBefore(activeSection, document.body.firstChild || null);
+        container.insertBefore(activeSection, container.firstChild || null);
         initialized = true;
 
         if(typeof vault.onLock === 'function') lockUnsubscribe = vault.onLock(function() {
@@ -98,19 +117,16 @@ function VaultUI() {
 
         var form = make(document, 'form');
         var passphrase = make(document, 'input');
-        var confirmation = make(document, 'input');
         passphrase.type = 'password';
-        confirmation.type = 'password';
         passphrase.autocomplete = 'new-password';
-        confirmation.autocomplete = 'new-password';
         passphrase.minLength = MIN_PASSPHRASE_LENGTH;
-        confirmation.minLength = MIN_PASSPHRASE_LENGTH;
         passphrase.required = true;
-        confirmation.required = true;
+        passphrase.id = 'vault-create-passphrase';
         var passLabel = make(document, 'label', 'New Vault passphrase (at least 12 characters)');
-        var confirmLabel = make(document, 'label', 'Confirm Vault passphrase');
-        passLabel.appendChild(passphrase);
-        confirmLabel.appendChild(confirmation);
+        passLabel.setAttribute('for', passphrase.id);
+        var passField = make(document, 'div');
+        passField.className = 'vault-passphrase-field';
+        append(passField, [passLabel, passwordControl(document, passphrase)]);
         var risk = make(document, 'input');
         risk.type = 'checkbox';
         risk.required = true;
@@ -120,7 +136,7 @@ function VaultUI() {
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
-        append(form, [passLabel, confirmLabel, riskLabel, submit, message]);
+        append(form, [passField, riskLabel, submit, message]);
         activeSection.appendChild(form);
 
         form.addEventListener('submit', function(event) {
@@ -129,21 +145,13 @@ function VaultUI() {
                 setText(message, 'The passphrase must be at least 12 characters.');
                 return;
             }
-            if(passphrase.value !== confirmation.value) {
-                clearInput(passphrase);
-                clearInput(confirmation);
-                setText(message, 'The passphrases do not match.');
-                return;
-            }
             if(!risk.checked) {
                 clearInput(passphrase);
-                clearInput(confirmation);
                 setText(message, 'Confirm the unrecoverable-passphrase risk before continuing.');
                 return;
             }
             var operation = activeVault.create(passphrase.value);
             clearInput(passphrase);
-            clearInput(confirmation);
             setBusy(form, true);
             setText(message, 'Creating encrypted Vault…');
             return operation.then(function() {
@@ -166,13 +174,17 @@ function VaultUI() {
         input.type = 'password';
         input.autocomplete = 'current-password';
         input.required = true;
+        input.id = 'vault-unlock-passphrase';
         var label = make(document, 'label', 'Vault passphrase');
-        label.appendChild(input);
+        label.setAttribute('for', input.id);
+        var passField = make(document, 'div');
+        passField.className = 'vault-passphrase-field';
+        append(passField, [label, passwordControl(document, input)]);
         var submit = make(document, 'button', 'Unlock Vault');
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
-        append(form, [label, submit, message]);
+        append(form, [passField, submit, message]);
         activeSection.appendChild(form);
         form.addEventListener('submit', function(event) {
             event.preventDefault();

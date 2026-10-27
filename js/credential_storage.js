@@ -65,7 +65,7 @@ module.exports = function() {
     function clearAll() { return enqueue(function(next) { Object.keys(next).forEach(function(k) { delete next[k]; }); }); }
     function getCredential(url) { if(locked()) return null; var c = typeof url === 'string' ? credentials[key(url)] : null; return c ? Object.assign({}, c) : null; }
     function getCredentials(status) {
-        if(locked() || !status || !AuthPolicy.isHttpsUrl(status.url)) return [];
+        if(locked() || !status || !AuthPolicy.isWebsiteUrl(status.url)) return [];
         var found = []; Object.keys(credentials).forEach(function(k) { if(AuthPolicy.matchesRule(credentials[k].url, status.url)) found.push(Object.assign({}, credentials[k])); }); return found.sort(sortCredentials);
     }
     function sortCredentials(a, b) { return Number(a.priority === undefined ? 1 : a.priority) - Number(b.priority === undefined ? 1 : b.priority); }

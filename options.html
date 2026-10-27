@@ -29,8 +29,8 @@
             <form id="credential-form" class="credential-form">
                 <div class="credential-fields">
                     <label for="url"><span data-i18n="url_regexp">Url (regexp)</span>
-                        <input type="text" name="url" id="url" value="^https://" required="required">
-                        <span data-i18n="https_only_notice">Website authentication uses HTTPS only. HTTP (including localhost) never receives credentials. Existing HTTP rules remain stored but are inactive.</span>
+                        <input type="text" name="url" id="url" value="^https?://" required="required">
+                        <span data-i18n="http_basic_notice">Site rules can match HTTP or HTTPS. On plain HTTP, Basic credentials are sent without encryption; use only trusted HTTPS sites.</span>
                     </label>
                     <label for="username"><span data-i18n="username">Username</span>
                         <input type="text" name="username" id="username" required="required">
@@ -50,7 +50,7 @@
 
             <p id="storage-status" class="webdav-status" role="status" aria-live="polite" hidden></p>
 
-            <p class="webdav-warning" data-i18n="website_auth_warning">Website Basic authentication is HTTPS-only. HTTP challenges, including localhost, proxy authentication and non-Basic challenges never receive credentials. Use precise rules for trusted HTTPS origins.</p>
+            <p class="webdav-warning" data-i18n="website_auth_warning">Website Basic authentication follows the matching rule on HTTP or HTTPS. On plain HTTP, credentials are sent without encryption. Use only trusted HTTPS origins; proxy and non-Basic challenges remain unsupported.</p>
 
             <h2 data-i18n="test_section">Test your regex</h2>
 
@@ -61,7 +61,7 @@
                             <label for="test-regex" data-i18n="tested_regex_label">Your regex: </label>
                         </td>
                         <td>
-                            <input type="text" name="test-regex" id="test-regex" value="^https://">
+                            <input type="text" name="test-regex" id="test-regex" value="^https?://">
                         </td>
                     </tr>
                     <tr>
@@ -82,7 +82,7 @@
             <p data-i18n="import_legacy_warning">Import encrypted exports or backups using the same Vault passphrase. The legacy plaintext example below is for one-time migration only and requires confirmation. Imported entries are encrypted before local persistence; delete old plaintext copies separately.</p>
             <pre>
 [
-    {"url":"^https://example\\.com/", "username":"YOUR_USERNAME", "password":"YOUR_PASSWORD", "priority":"1"}
+    {"url":"^https?://example\\.com/", "username":"YOUR_USERNAME", "password":"YOUR_PASSWORD", "priority":"1"}
 ]
             </pre>
 
@@ -171,6 +171,8 @@
             <p class="webdav-actions"><button type="button" id="webdav-revoke" data-i18n="webdav_revoke">Revoke WebDAV sync authorization</button></p>
             <p id="webdav-status" class="webdav-status" role="status" aria-live="polite" data-i18n="webdav_status_configure">Configure a WebDAV file URL to begin.</p>
             <p class="webdav-warning" data-i18n="webdav_warning">All WebDAV endpoints must use HTTPS, including localhost, 127.0.0.1 and [::1]. WebDAV stores an encrypted sync envelope; the server still sees Basic account credentials and request metadata. Legacy plaintext remote files are refused by automatic sync and are never silently overwritten; download a backup first, then use explicit Push local migration only after review. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval.</p>
+
+            <div id="vault-ui-container"></div>
 
             <h2 data-i18n="clear_section">Clear all credentials</h2>
 

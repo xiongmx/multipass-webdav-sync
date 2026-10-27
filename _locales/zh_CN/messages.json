@@ -127,8 +127,12 @@
         "message": "喜欢这个扩展吗？欢迎小额捐赠：",
         "description": "Text accompanying the donation button"
     },
-    "https_only_notice": {
-        "message": "网站身份验证仅允许通过 HTTPS。HTTP（包括 localhost）不会收到凭据。既有 HTTP 规则仍会保留，但不会生效。",
+    "http_basic_notice": {
+        "message": "站点规则可匹配 HTTP 或 HTTPS。普通 HTTP 下 Basic 凭据不会加密传输；仅在可信站点使用 HTTP，建议优先使用 HTTPS。",
+        "description": "User-visible extension UI message."
+    },
+    "site_rule_default_notice": {
+        "message": "请使用范围更精确的站点规则；默认的 ^https?:// 规则不会提交。",
         "description": "User-visible extension UI message."
     },
     "import_legacy_warning": {
@@ -269,10 +273,6 @@
     },
     "legacy_import_confirmation": {
         "message": "这是旧版明文文件。仅在你信任其来源时导入；导入后会加密存入保险库。原文件不会自动删除。是否继续此次一次性迁移？",
-        "description": "User-visible extension UI message."
-    },
-    "default_https_rule_warning": {
-        "message": "请使用更精确的 HTTPS 规则；默认的 ^https:// 规则不会被提交。",
         "description": "User-visible extension UI message."
     },
     "vault_title": {
@@ -752,7 +752,7 @@
         "description": "User-visible extension UI message."
     },
     "website_auth_warning": {
-        "message": "网站 Basic 身份验证仅允许通过 HTTPS。HTTP 挑战（包括 localhost）、代理身份验证和非 Basic 挑战都不会收到凭据。请为可信 HTTPS 源站使用精确规则。",
+        "message": "网站 Basic 身份验证按匹配规则支持 HTTP 或 HTTPS。普通 HTTP 下凭据会以未加密方式传输；HTTP 仅用于可信环境，建议优先使用 HTTPS。代理身份验证和非 Basic 挑战仍不会收到凭据。",
         "description": "User-visible extension UI message."
     },
     "vault_no_web_locks": {

@@ -81,10 +81,10 @@ function fakeVault(failPublication) {
     };
 }
 
-function find(root, tag) {
-    if(root.tagName === tag.toUpperCase()) return root;
+function find(root, tag, predicate) {
+    if(root.tagName === tag.toUpperCase() && (!predicate || predicate(root))) return root;
     for(var i = 0; i < root.children.length; i++) {
-        var found = find(root.children[i], tag);
+        var found = find(root.children[i], tag, predicate);
         if(found) return found;
     }
     return null;
@@ -99,33 +99,45 @@ async function main() {
     var document = new Document();
     var existing = document.createElement('main');
     document.body.appendChild(existing);
+    var mount = document.createElement('div');
+    document.body.appendChild(mount);
     var VaultUI = require('../js/vault_ui');
     var vault = fakeVault();
-    VaultUI.init({ document: document, vault: vault });
+    VaultUI.init({ document: document, container: mount, vault: vault });
     await new Promise(function(resolve) { setTimeout(resolve, 0); });
-    assert.strictEqual(document.body.firstChild.id, 'vault-ui');
-    var section = document.body.firstChild;
+    assert.strictEqual(document.body.firstChild, existing, 'Vault UI must mount only into the requested settings container');
+    assert.strictEqual(mount.firstChild.id, 'vault-ui');
+    var section = mount.firstChild;
     var inputs = section.querySelectorAll('input');
-    assert.strictEqual(inputs.length, 3);
+    assert.strictEqual(inputs.length, 2, 'Vault creation must have one passphrase field and the risk checkbox');
     assert.strictEqual(inputs[0].autocomplete, 'new-password');
-    assert.strictEqual(inputs[1].autocomplete, 'new-password');
+    var setupToggle = find(section, 'button', function(button) { return button.textContent === 'Show / Hide'; });
+    assert(setupToggle, 'setup page must expose the localized show/hide control');
+    await setupToggle.listeners.click();
+    assert.strictEqual(inputs[0].type, 'text');
+    assert.strictEqual(setupToggle['aria-pressed'], 'true');
+    await setupToggle.listeners.click();
+    assert.strictEqual(inputs[0].type, 'password');
+    assert.strictEqual(setupToggle['aria-pressed'], 'false');
     var form = find(section, 'form');
     inputs[0].value = 'abcdefghijkl';
-    inputs[1].value = 'abcdefghijkl';
-    inputs[0].value = 'abcdefghijkl';
-    inputs[2].checked = true;
+    inputs[1].checked = true;
     await form.listeners.submit({ preventDefault: function() {} });
     assert.strictEqual(inputs[0].value, '');
-    assert.strictEqual(inputs[1].value, '');
     await Promise.resolve();
     assert(textOf(section).indexOf('Vault unlocked') >= 0);
 
-    var lock = find(section, 'button');
+    var lock = find(section, 'button', function(button) { return button.textContent === 'Lock Vault'; });
     await lock.listeners.click();
     await Promise.resolve();
     assert(textOf(section).indexOf('locked on this page') >= 0);
     var unlockInput = find(section, 'input');
     assert.strictEqual(unlockInput.autocomplete, 'current-password');
+    var unlockToggle = find(section, 'button', function(button) { return button.textContent === 'Show / Hide'; });
+    await unlockToggle.listeners.click();
+    assert.strictEqual(unlockInput.type, 'text');
+    await unlockToggle.listeners.click();
+    assert.strictEqual(unlockInput.type, 'password');
     unlockInput.value = 'abcdefghijkl';
     var unlockForm = find(section, 'form');
     await unlockForm.listeners.submit({ preventDefault: function() {} });
@@ -133,14 +145,14 @@ async function main() {
     await Promise.resolve();
     assert(textOf(section).indexOf('Vault unlocked') >= 0);
     vault.failNextLock();
-    await find(section, 'button').listeners.click();
+    await find(section, 'button', function(button) { return button.textContent === 'Lock Vault'; }).listeners.click();
     assert.strictEqual(find(section, 'h2').textContent, 'Global lock is incomplete');
     assert(textOf(section).includes('mock session.remove failure'), 'failure must be in the current DOM, not a removed status node');
     var alert = section.children.filter(function(child) { return child.role === 'alert'; })[0];
     assert(alert && alert.hidden === false, 'persistent live error region must remain visible');
     assert(!textOf(section).includes('Vault locked on this page'), 'failed operation must not render a lock-success heading');
     assert.strictEqual(vault.isUnlocked(), false, 'failure must not restore local secrets');
-    await find(section, 'button').listeners.click();
+    await find(section, 'button', function(button) { return button.textContent === 'Retry global lock'; }).listeners.click();
     assert.strictEqual(find(section, 'h2').textContent, 'Vault locked on this page');
     assert(alert.hidden, 'only a successful retry can clear the failure alert');
     VaultUI._unsubscribe();
@@ -150,14 +162,15 @@ async function main() {
     await new Promise(function(resolve) { setTimeout(resolve, 0); });
     var recoverySection = recoveryDoc.body.firstChild;
     var recoveryInputs = recoverySection.querySelectorAll('input');
-    recoveryInputs[0].value = recoveryInputs[1].value = 'abcdefghijkl'; recoveryInputs[2].checked = true;
+    assert.strictEqual(recoveryInputs.length, 2, 'recovery setup must not request a duplicate passphrase');
+    recoveryInputs[0].value = 'abcdefghijkl'; recoveryInputs[1].checked = true;
     await find(recoverySection, 'form').listeners.submit({ preventDefault: function() {} });
     assert.strictEqual(find(recoverySection, 'h2').textContent, 'Vault locked on this page');
     assert(textOf(recoverySection).includes('migration data were preserved'));
     assert.strictEqual(find(recoverySection, 'input').autocomplete, 'current-password');
     assert.strictEqual(recoveryInputs[0].value, '');
     assert(recoverySection.children.some(function(child) { return child.role === 'alert' && !child.hidden; }));
-    require('fs').writeSync(1, 'Vault UI tests passed: synchronous onLock, rejected global lock, visible error, fail-closed local state and successful retry.\n');
+    require('fs').writeSync(1, 'Vault UI tests passed: single-entry setup, show/hide controls, settings-only mount, global lock recovery and fail-closed state.\n');
 }
 
 var completed = false;
