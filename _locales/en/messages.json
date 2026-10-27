@@ -252,7 +252,7 @@
         "description": "User-visible extension UI message."
     },
     "clear_sensitive_warning": {
-        "message": "This local-clear action requires confirmation and removes local credentials, temporary credential form data, WebDAV account/settings, sync metadata, backups, and automatic-sync status. It does not delete remote WebDAV files or files already downloaded to your computer; delete those separately.",
+        "message": "This local-clear action requires confirmation and removes local credentials, temporary credential form data, WebDAV account/settings, sync metadata, backups, automatic-sync status, and persistent Vault root key material. It does not delete remote WebDAV files or files already downloaded to your computer; delete those separately.",
         "description": "User-visible extension UI message."
     },
     "footer_disclaimer": {
@@ -336,7 +336,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_locked_description": {
-        "message": "Authentication and sync on this page are paused. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.",
+        "message": "Authentication and sync on this page are paused. Locking clears persistent Vault root key material and requires the passphrase next time. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.",
         "description": "User-visible extension UI message."
     },
     "vault_passphrase": {
@@ -384,7 +384,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_lock_failure_description": {
-        "message": "This page remains paused and will not restore credentials, but its state cannot prove that other pages, the background process or session keys were cleared. Retry; do not use the extension until this succeeds.",
+        "message": "This page remains paused and will not restore credentials, but global cleanup may have left session or persistent Vault key material behind. Retry; do not use the extension until global lock succeeds.",
         "description": "User-visible extension UI message."
     },
     "vault_unlocked_status": {
@@ -398,6 +398,10 @@
     "vault_lock_button": {
         "message": "Lock Vault",
         "description": "User-visible extension UI message."
+    },
+    "vault_persistence_disclosure": {
+        "message": "After you create or unlock the Vault, it stays unlocked across browser or app restarts until you click Lock Vault. Only Vault root key material is stored locally for automatic unlock; your passphrase is not saved and WebDAV account data remains encrypted. Anyone with access to this browser profile or extension context may use the Vault and decrypt local data or remote sync ciphertext; do not use this on a shared device.",
+        "description": "Security disclosure for persistent Vault unlocked state."
     },
     "webdav_vault_unavailable": {
         "message": "Secure Vault is unavailable. Unlock the extension before using WebDAV sync.",
@@ -732,7 +736,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_clear_confirm": {
-        "message": "Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.",
+        "message": "Clear all credentials and sensitive data stored on this device, including persistent Vault root key material? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.",
         "description": "User-visible extension UI message."
     },
     "webdav_cleared": {

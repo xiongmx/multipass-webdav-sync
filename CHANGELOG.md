@@ -3,6 +3,8 @@ MultiPass CHANGELOG
 
 VERSION 0 FIRST BLOOD
 ---------------------
+### Version 1.1.4 - 28/10/2026 - Persistent unlocked Vault and safe WebDAV writes
+    Keep the Vault unlocked across browser/app restarts by storing only its root key material locally until the user explicitly locks it. Manual lock revokes and clears persistent key material. Continue rejecting URL query parameters in WebDAV endpoints; verify WebDAV writes by exact read-back and conditional ETag checks.
 ### Version 1.1.2 - 27/10/2026 - WebDAV fork identity and package metadata
     Clarify the unofficial MultiPass WebDAV Sync fork, encrypted WebDAV synchronization, security limitations, platform status, privacy-policy URL, and 1.1.2 package metadata.
 

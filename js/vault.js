@@ -8,6 +8,7 @@ module.exports = (function() {
     var CONFIG_KEY = 'vaultConfig';
     var VALUES_KEY = 'vaultEncryptedValues';
     var SESSION_KEY = 'vaultRootMaterial';
+    var REMEMBERED_KEY = 'vaultRememberedRootMaterial';
     var REVOCATION_KEY = 'vaultRevocationState';
     var FORMAT = 'multipass-vault-v1';
     var ITERATIONS = 600000;
@@ -41,7 +42,7 @@ module.exports = (function() {
     }
     function validateLocalKey(key) {
         if(typeof key !== 'string' || !/^[A-Za-z0-9._-]{1,100}$/.test(key) ||
-            [CONFIG_KEY, SESSION_KEY, REVOCATION_KEY, '__proto__', 'constructor', 'prototype'].indexOf(key) !== -1) {
+            [CONFIG_KEY, SESSION_KEY, REMEMBERED_KEY, REVOCATION_KEY, '__proto__', 'constructor', 'prototype'].indexOf(key) !== -1) {
             throw fail('Invalid vault storage key.');
         }
     }
@@ -163,8 +164,14 @@ module.exports = (function() {
         });
     }
     function getConfig() { return get(local, CONFIG_KEY).then(function(v) { return v[CONFIG_KEY]; }); }
+    function getRememberedRoot() {
+        return get(local, REMEMBERED_KEY).then(function(value) {
+            if(!own(value, REMEMBERED_KEY)) return null;
+            return b64ToBytes(value[REMEMBERED_KEY], 32);
+        });
+    }
     function validateRevocation(value) {
-        if(value === undefined) return { locked: false, generation: 0 };
+        if(value === undefined) return { locked: true, generation: 0 };
         if(!value || typeof value !== 'object' || Array.isArray(value) ||
             typeof value.locked !== 'boolean' || typeof value.generation !== 'number' ||
             !isFinite(value.generation) || value.generation < 0) throw fail('Invalid vault revocation state.');
@@ -191,6 +198,16 @@ module.exports = (function() {
         value[REVOCATION_KEY] = { locked: !!locked, generation: generation };
         return set(local, value).then(function() { return getRevocation(); });
     }
+    function revokeDurably(generation) {
+        return setRevocation(true, generation).catch(function(writeError) {
+            // Absence is fail-closed. Removal is an independent durable fallback
+            // when writing a locked marker fails; never retain an old unlock permit.
+            return remove(local, REVOCATION_KEY).then(function() { return get(local, REVOCATION_KEY); }).then(function(value) {
+                if(own(value, REVOCATION_KEY)) throw writeError;
+                return applyRevocation(undefined);
+            });
+        });
+    }
     function ensureActive() {
         return getRevocation().then(function(state) {
             if(state.locked || revoked) throw fail('Vault is locked.');
@@ -207,6 +224,15 @@ module.exports = (function() {
         return callbackPromise(function(resolve, reject) {
             try {
                 var result = session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+                if(result && typeof result.then === 'function') result.then(resolve, reject); else resolve();
+            } catch (e) { reject(e); }
+        });
+    }
+    function ensureTrustedLocalStorage() {
+        if(typeof local.setAccessLevel !== 'function') return Promise.resolve();
+        return callbackPromise(function(resolve, reject) {
+            try {
+                var result = local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
                 if(result && typeof result.then === 'function') result.then(resolve, reject); else resolve();
             } catch (e) { reject(e); }
         });
@@ -252,15 +278,37 @@ module.exports = (function() {
     }
     function ready() {
         var observedSerial;
-        if(!readyPromise) readyPromise = ensureSession().then(function() {
+        if(!readyPromise) readyPromise = ensureSession().then(ensureTrustedLocalStorage).then(function() {
             installSessionListener();
             observedSerial = sessionSerial;
             return getRevocation().then(function(state) {
-                if(state.locked) return null;
-                return get(session, SESSION_KEY);
+                if(state.locked) {
+                    return exclusive(function() {
+                        var sessionError = null, rememberedError = null;
+                        return Promise.all([
+                            clearSessionRoot().catch(function(error) { sessionError = error; }),
+                            clearRememberedRoot().catch(function(error) { rememberedError = error; })
+                        ]).then(function() {
+                            if(sessionError || rememberedError) {
+                                var failure = fail('Global vault lock could not be completed: ' + (sessionError || rememberedError).message);
+                                failure.recoveryLocked = false;
+                                throw failure;
+                            }
+                            return null;
+                        });
+                    });
+                }
+                return get(session, SESSION_KEY).then(function(value) {
+                    if(value && value[SESSION_KEY]) return getRememberedRoot().then(function(rememberedRoot) {
+                        var matches = rememberedRoot && bytesToB64(rememberedRoot) === value[SESSION_KEY];
+                        if(rememberedRoot) rememberedRoot.fill(0);
+                        return matches ? value : rememberActiveSession();
+                    });
+                    return restoreRememberedSession();
+                });
             });
-        }).then(function(value) { if(value && observedSerial === sessionSerial && !revoked) applySession(value); return undefined; }).catch(function(error) {
-            zeroize(); throw error;
+        }).then(function(value) { if(value && !revoked && (observedSerial === sessionSerial || isUnlocked())) applySession(value); return undefined; }).catch(function(error) {
+            zeroize(); readyPromise = null; throw error;
         });
         return readyPromise;
     }
@@ -271,19 +319,21 @@ module.exports = (function() {
     function currentEpoch() { return epoch; }
     function checkEpoch(value) { if(value !== epoch || !rootMaterial || revoked) throw fail('Vault is locked.'); }
     function publishSession(sessionValue, generation) {
-        return set(session, sessionValue).then(function() {
+        return persistRootMaterial(sessionValue).then(function() { return set(session, sessionValue); }).then(function() {
             return setRevocation(false, generation).then(function() { applySession(sessionValue); });
         }).catch(function(error) {
-            var hadRoot = !!rootMaterial, markerError = null, cleanupError = null;
+            var hadRoot = !!rootMaterial, markerError = null, cleanupError = null, rememberedCleanupError = null;
             localLockPending++; localLockSerial++; epoch++;
             zeroize(); revoked = true; revocationKnown = true;
             if(hadRoot) notify(lockCallbacks);
-            return setRevocation(true, generation + 1).catch(function(e) { markerError = e; }).then(function() {
+            return revokeDurably(generation + 1).catch(function(e) { markerError = e; }).then(function() {
                 return clearSessionRoot().catch(function(e) { cleanupError = e; });
+            }).then(function() {
+                return clearRememberedRoot().catch(function(e) { rememberedCleanupError = e; });
             }).then(function() {
                 localLockPending--;
                 var failure = fail('Vault session publication failed. Encrypted data is retained; unlock with the same passphrase. ' + error.message);
-                failure.recoveryLocked = !markerError && !cleanupError;
+                failure.recoveryLocked = !markerError && !cleanupError && !rememberedCleanupError;
                 throw failure;
             });
         });
@@ -315,7 +365,7 @@ module.exports = (function() {
             });
         });
     }
-    function create(passphrase) { return exclusive(function() { return createUnlocked(passphrase); }); }
+    function create(passphrase) { return ready().then(function() { return exclusive(function() { return createUnlocked(passphrase); }); }); }
     function unlockUnlocked(passphrase) {
         var start;
         return ready().then(function() { start = epoch; return material(passphrase); }).then(function(m) {
@@ -328,14 +378,21 @@ module.exports = (function() {
                     return get(local, REVOCATION_KEY).then(function(stateValue) {
                         var state = validateRevocation(stateValue[REVOCATION_KEY]);
                         return setRevocation(true, state.generation + 1).then(function() {
-                            return publishSession(sessionValue, state.generation + 2);
+                            var sessionCleanupError = null, rememberedCleanupError = null;
+                            return Promise.all([
+                                clearSessionRoot().catch(function(error) { sessionCleanupError = error; }),
+                                clearRememberedRoot().catch(function(error) { rememberedCleanupError = error; })
+                            ]).then(function() {
+                                if(sessionCleanupError || rememberedCleanupError) throw sessionCleanupError || rememberedCleanupError;
+                                return publishSession(sessionValue, state.generation + 2);
+                            });
                         });
                     });
                 });
             });
         });
     }
-    function unlock(passphrase) { return exclusive(function() { return unlockUnlocked(passphrase); }); }
+    function unlock(passphrase) { return ready().then(function() { return exclusive(function() { return unlockUnlocked(passphrase); }); }); }
     function clearSessionRoot() {
         return remove(session, SESSION_KEY).then(function() { return get(session, SESSION_KEY); }).then(function(value) {
             if(own(value, SESSION_KEY)) throw fail('Secure session root could not be revoked.');
@@ -343,6 +400,71 @@ module.exports = (function() {
             var empty = {}; empty[SESSION_KEY] = null;
             return set(session, empty).then(function() { return get(session, SESSION_KEY); }).then(function(value) {
                 if(own(value, SESSION_KEY) && value[SESSION_KEY] !== null) throw removeError;
+            });
+        });
+    }
+    function clearRememberedRoot() {
+        return remove(local, REMEMBERED_KEY).then(function() { return get(local, REMEMBERED_KEY); }).then(function(value) {
+            if(own(value, REMEMBERED_KEY)) throw fail('Remembered Vault material could not be cleared.');
+        });
+    }
+    function persistRootMaterial(sessionValue) {
+        return ensureTrustedLocalStorage().then(function() {
+            var root = b64ToBytes(sessionValue[SESSION_KEY], 32);
+            var value = {}; value[REMEMBERED_KEY] = bytesToB64(root);
+            root.fill(0);
+            return set(local, value).then(function() { return getRememberedRoot(); }).then(function(storedRoot) {
+                var valid = storedRoot && bytesToB64(storedRoot) === value[REMEMBERED_KEY];
+                if(storedRoot) storedRoot.fill(0);
+                if(!valid) throw fail('Persistent Vault root could not be verified.');
+            });
+        });
+    }
+    function rememberActiveSession() {
+        return exclusive(function() {
+            return getRevocation().then(function(state) {
+                if(state.locked || localLockPending) return null;
+                return get(session, SESSION_KEY).then(function(existing) {
+                    if(!existing || !existing[SESSION_KEY]) return null;
+                    return getRememberedRoot().then(function(rememberedRoot) {
+                        var matches = rememberedRoot && bytesToB64(rememberedRoot) === existing[SESSION_KEY];
+                        if(rememberedRoot) rememberedRoot.fill(0);
+                        if(matches) return existing;
+                        // Upgrade an already-unlocked legacy session under the same
+                        // locked-first publication protocol as explicit unlock.
+                        return setRevocation(true, state.generation + 1).then(function() {
+                            return publishSession(existing, state.generation + 2);
+                        }).then(function() { return existing; });
+                    });
+                });
+            });
+        });
+    }
+    function restoreRememberedSession() {
+        return exclusive(function() {
+            var state;
+            return getRevocation().then(function(current) {
+                state = current;
+                if(state.locked || localLockPending) return null;
+                return get(session, SESSION_KEY).then(function(existing) {
+                    if(existing && existing[SESSION_KEY]) return existing;
+                    return getRememberedRoot().then(function(rememberedRoot) {
+                        if(!rememberedRoot) return null;
+                        var sessionValue = {};
+                        sessionValue[SESSION_KEY] = bytesToB64(rememberedRoot);
+                        rememberedRoot.fill(0);
+                        return set(session, sessionValue).then(function() {
+                            return get(local, REVOCATION_KEY).then(function(latestValue) {
+                                var latest = validateRevocation(latestValue[REVOCATION_KEY]);
+                                if(latest.locked || latest.generation !== state.generation || localLockPending) {
+                                    return clearSessionRoot().then(function() { return null; });
+                                }
+                                applySession(sessionValue);
+                                return sessionValue;
+                            });
+                        });
+                    });
+                });
             });
         });
     }
@@ -358,16 +480,18 @@ module.exports = (function() {
         revocationKnown = true;
         if(hadRoot) notify(lockCallbacks);
         return exclusive(function() {
-            var markerError = null;
+            var markerError = null, sessionError = null, rememberedError = null;
             return get(local, REVOCATION_KEY).then(function(value) {
                 var state = validateRevocation(value[REVOCATION_KEY]);
-                return setRevocation(true, state.generation + 1);
+                return revokeDurably(state.generation + 1);
             }).catch(function(error) { markerError = error; }).then(function() {
-                // Try both independent revocation channels, even if the first fails.
-                return clearSessionRoot().then(function() {
+                // Try all independent revocation/cleanup channels, even if one fails.
+                return Promise.all([
+                    clearSessionRoot().catch(function(error) { sessionError = error; }),
+                    clearRememberedRoot().catch(function(error) { rememberedError = error; })
+                ]).then(function() {
                     if(markerError) throw fail('Global vault lock could not be confirmed: ' + markerError.message);
-                }, function(error) {
-                    throw fail('Global vault lock could not be completed: ' + error.message);
+                    if(sessionError || rememberedError) throw fail('Global vault lock could not be completed: ' + (sessionError || rememberedError).message);
                 });
             });
         }).then(function(result) { localLockPending--; return result; }, function(error) { localLockPending--; throw error; });
@@ -444,6 +568,7 @@ module.exports = (function() {
         unlock: unlock, lock: lock, onLock: onLock, onUnlock: onUnlock, verifyUnlocked: verifyUnlocked, getAsync: getAsync,
         setAsync: setAsync, updateAsync: updateAsync, removeAsync: removeAsync, encrypt: encrypt, decrypt: decrypt,
         constants: { configKey: CONFIG_KEY, encryptedValuesKey: VALUES_KEY, sessionKey: SESSION_KEY,
+            rememberedKey: REMEMBERED_KEY,
             revocationKey: REVOCATION_KEY,
             iterations: ITERATIONS, saltBytes: SALT_BYTES, ivBytes: IV_BYTES } };
 }());

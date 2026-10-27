@@ -105,7 +105,7 @@ var WebDAVSync = function() {
         if(parsed.username || parsed.password) {
             throw new Error('Do not put a username or password in the URL; use the separate fields.');
         }
-        if(parsed.search) throw new Error('Do not put authentication data or tokens in the URL query; use the separate fields.');
+        if(parsed.search || parsed.href.indexOf('?') !== -1) throw new Error('Do not put authentication data or tokens in the URL query; use the separate fields.');
         if(parsed.hash) throw new Error('The WebDAV URL must not contain a fragment.');
         return parsed.href;
     }
@@ -904,12 +904,16 @@ var WebDAVSync = function() {
     }
 
     function clearAllSensitiveData() {
-        if(!window.confirm(Translator.translateText('Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.'))) return Promise.resolve();
+        if(!window.confirm(Translator.translateText('Clear all credentials and sensitive data stored on this device, including persistent Vault root key material? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.'))) return Promise.resolve();
         stopForLock();
         var clearCredentials = vault().isUnlocked() && credentialStorage && typeof credentialStorage.clearAll === 'function' ? credentialStorage.clearAll() : Promise.resolve();
-        return clearCredentials.then(function() { return localRemove(['credentials', 'temporary-credentials', 'password-real', 'password-stars', SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]); })
-            .then(function() { return configureAutoSyncAlarm(0); })
-            .then(function() { return vault().lock(); })
+        var clearOperation = clearCredentials.then(function() { return localRemove(['credentials', 'temporary-credentials', 'password-real', 'password-stars', SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]); })
+            .then(function() { return configureAutoSyncAlarm(0); });
+        return clearOperation.then(function() { return vault().lock(); }, function(error) {
+            return vault().lock().then(function() { throw error; }, function(lockError) {
+                throw new Error((error.message || String(error)) + ' Global Vault lock also failed: ' + (lockError.message || String(lockError)));
+            });
+        })
             .then(function() { setStatus('All local credentials and sensitive WebDAV data were cleared. Remote and downloaded files were not deleted.', false); });
     }
 

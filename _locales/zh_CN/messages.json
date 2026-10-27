@@ -252,7 +252,7 @@
         "description": "User-visible extension UI message."
     },
     "clear_sensitive_warning": {
-        "message": "此本地清除操作需要确认，并会移除本地凭据、临时凭据表单数据、WebDAV 账号/设置、同步元数据、备份和自动同步状态。它不会删除远端 WebDAV 文件或已下载到电脑的文件；请另行删除这些文件。",
+        "message": "此本地清除操作需要确认，并会移除本地凭据、临时凭据表单数据、WebDAV 账号/设置、同步元数据、备份、自动同步状态和持久保存的 Vault 根密钥材料。它不会删除远端 WebDAV 文件或已下载到电脑的文件；请另行删除这些文件。",
         "description": "User-visible extension UI message."
     },
     "footer_disclaimer": {
@@ -336,7 +336,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_locked_description": {
-        "message": "本页的身份验证和同步已暂停。锁定无法撤销浏览器已缓存的身份验证或服务器维护的会话。",
+        "message": "本页的身份验证和同步已暂停。锁定会清除持久保存的 Vault 根密钥材料，下次需要输入口令。锁定无法撤销浏览器已缓存的身份验证或服务器维护的会话。",
         "description": "User-visible extension UI message."
     },
     "vault_passphrase": {
@@ -384,7 +384,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_lock_failure_description": {
-        "message": "本页会保持暂停且不会恢复凭据，但当前页面状态不能证明其他页面、后台进程或会话密钥已清除。请重试；成功前不要继续使用扩展。",
+        "message": "本页会保持暂停且不会恢复凭据，但全局清理可能仍留下会话或持久保存的 Vault 密钥材料。请重试；全局锁定成功前不要继续使用扩展。",
         "description": "User-visible extension UI message."
     },
     "vault_unlocked_status": {
@@ -398,6 +398,10 @@
     "vault_lock_button": {
         "message": "锁定保险库",
         "description": "User-visible extension UI message."
+    },
+    "vault_persistence_disclosure": {
+        "message": "创建或解锁保险库后，除非你点击“锁定保险库”，否则即使浏览器或应用重启，保险库也会保持解锁。自动解锁只会在本地保存保险库根密钥材料，不保存口令；WebDAV 账号数据仍以加密形式保存。能访问此浏览器配置文件或扩展上下文的人可能使用保险库并解密本地数据或远端同步密文；请勿在共享设备上使用。",
+        "description": "Security disclosure for persistent Vault unlocked state."
     },
     "webdav_vault_unavailable": {
         "message": "安全保险库不可用。请先解锁扩展，再使用 WebDAV 同步。",
@@ -732,7 +736,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_clear_confirm": {
-        "message": "要清除此设备上存储的所有凭据和敏感数据吗？远端 WebDAV 文件和已下载的备份文件不会被删除，必须另行移除。",
+        "message": "要清除此设备上存储的所有凭据和敏感数据（包括持久保存的 Vault 根密钥材料）吗？远端 WebDAV 文件和已下载的备份文件不会被删除，必须另行移除。",
         "description": "User-visible extension UI message."
     },
     "webdav_cleared": {

@@ -96,7 +96,12 @@ async function main() {
     try {
         var Storage = require('../js/storage');
         var Vault = require('../js/vault');
+        var initializationErrors = 0;
+        var unregisterInitialization = Storage.onError(function() { initializationErrors++; });
         await Vault.create('storage test passphrase');
+        await new Promise(function(resolve) { setImmediate(resolve); });
+        assert.strictEqual(initializationErrors, 0, 'persistent root metadata must not be decrypted as a business-data envelope');
+        unregisterInitialization();
         assert.strictEqual(await Storage.getAsync('missing', 'fallback'), 'fallback');
         assert.strictEqual(syncCalls, 0, 'credential storage must not probe or use browser sync storage');
 

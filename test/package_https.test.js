@@ -19,6 +19,7 @@ var packages = [
 var CONFIG_KEY = 'vaultConfig';
 var VALUES_KEY = 'vaultEncryptedValues';
 var SESSION_KEY = 'vaultRootMaterial';
+var REMEMBERED_KEY = 'vaultRememberedRootMaterial';
 var PASSPHRASE = 'dummyphrase-for-package-test';
 
 function unzipText(packagePath, member) {
@@ -198,9 +199,13 @@ async function createEncryptedFixture() {
         assert.strictEqual(localJson.indexOf(PASSPHRASE), -1, 'local JSON must not contain the dummy passphrase');
         assert.strictEqual(localJson.indexOf('dummy-site-password'), -1, 'local JSON must not contain site passwords');
         assert.strictEqual(localJson.indexOf('dummy-http-password'), -1, 'local JSON must not contain HTTP site passwords');
-        assert.strictEqual(localJson.indexOf(SESSION_KEY), -1, 'root material must not be in local storage');
+        assert.strictEqual(shared.local[REMEMBERED_KEY], shared.session[SESSION_KEY], 'only the dedicated root record enables automatic restart unlock');
         assert.strictEqual(JSON.stringify(shared.session).indexOf(PASSPHRASE), -1, 'session must not contain the passphrase');
-        return { local: clone(shared.local), session: clone(shared.session) };
+        var fixture = { local: clone(shared.local), session: clone(shared.session) };
+        await Vault.lock();
+        assert.strictEqual(shared.local[REMEMBERED_KEY], undefined, 'manual lock removes persistent root material');
+        fixture.lockedLocal = clone(shared.local);
+        return fixture;
     } finally {
         delete require.cache[vaultPath];
         global.chrome = oldChrome;
@@ -266,7 +271,23 @@ async function executeBundle(packagePath, manifest, fixture) {
     assert.strictEqual(freshChrome.__state.auth.length, 1);
     var freshStatus = Object.assign({}, base, { url: 'https://remote.test/file', scheme: 'basic', isProxy: false });
     var freshResponse = manifest.manifest_version >= 3 ? await new Promise(function(resolve) { freshChrome.__state.auth[0].callback(freshStatus, resolve); }) : await freshChrome.__state.auth[0].callback(freshStatus);
-    assert.deepStrictEqual(jsonValue(freshResponse), {}, packagePath + ' fresh VM with empty session must start locked');
+    assert.deepStrictEqual(jsonValue(freshResponse), {
+        authCredentials: { username: 'dummy-user', password: 'dummy-site-password' }
+    }, packagePath + ' a fresh VM after restart restores unlocked state by default');
+    assert.strictEqual(shared.session[SESSION_KEY], shared.local[REMEMBERED_KEY], packagePath + ' restart restores only the root material');
+
+    var lockedShared = { local: clone(fixture.lockedLocal), session: clone(fixture.session), changeListeners: [] };
+    lockedShared.local[REMEMBERED_KEY] = fixture.local[REMEMBERED_KEY];
+    var lockedChrome = makeChrome(lockedShared, manifest.manifest_version);
+    var lockedContext = Object.assign({}, context, { chrome: lockedChrome });
+    lockedContext.globalThis = lockedContext;
+    vm.runInNewContext(unzipText(packagePath, 'js/extension.js'), lockedContext, { filename: packagePath + ':locked-restart:js/extension.js' });
+    await settle();
+    var lockedResponse = manifest.manifest_version >= 3 ? await new Promise(function(resolve) { lockedChrome.__state.auth[0].callback(freshStatus, resolve); }) : await lockedChrome.__state.auth[0].callback(freshStatus);
+    assert.deepStrictEqual(jsonValue(lockedResponse), {}, packagePath + ' manual lock must prevent restart recovery even with stale root material');
+    assert.strictEqual(lockedShared.local[REMEMBERED_KEY], undefined, packagePath + ' locked startup clears retained persistent root');
+    assert.strictEqual(lockedShared.session[SESSION_KEY], undefined, packagePath + ' locked startup clears retained session root');
+    assert.strictEqual(fetchCalls, 0, packagePath + ' runtime auth checks never use network requests');
 }
 
 async function main() {

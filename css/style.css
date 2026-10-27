@@ -468,6 +468,7 @@ table.form-table td output ul {
 }
 #vault-ui h2 { margin-top: 0; color: #193254; }
 #vault-ui p { line-height: 1.65; }
+#vault-ui .vault-persistence-disclosure { flex-basis: 100%; margin: 0; padding: 12px 14px; border-left: 4px solid #a35b12; border-radius: 4px; background: #fff3df; color: #57340d; }
 #vault-ui form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 #vault-ui form > label { display: block; flex: 1 1 260px; min-width: 0; line-height: 1.6; }
 #vault-ui .vault-passphrase-field { display: block; flex: 1 1 260px; min-width: 0; line-height: 1.6; }

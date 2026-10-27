@@ -44,6 +44,13 @@ function passwordControl(document, input) {
     return control;
 }
 
+function securityNotice(document) {
+    var notice = make(document, 'p');
+    notice.textContent = Translator.translate('vault_persistence_disclosure');
+    notice.className = 'vault-persistence-disclosure';
+    return notice;
+}
+
 function VaultUI() {
     var activeSection = null;
     var activeVault = null;
@@ -90,7 +97,8 @@ function VaultUI() {
                 renderSetup();
             }
         }).catch(function(error) {
-            renderError(error);
+            if(error && error.recoveryLocked === false) renderLockFailure(error);
+            else renderError(error);
         });
         return activeSection;
     }
@@ -136,7 +144,7 @@ function VaultUI() {
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
-        append(form, [passField, riskLabel, submit, message]);
+        append(form, [passField, riskLabel, securityNotice(document), submit, message]);
         activeSection.appendChild(form);
 
         form.addEventListener('submit', function(event) {
@@ -168,7 +176,7 @@ function VaultUI() {
     function renderLocked() {
         var document = activeSection.ownerDocument;
         resetSection();
-        append(activeSection, [make(document, 'h2', 'Vault locked on this page'), make(document, 'p', 'Authentication and sync on this page are paused. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.')]);
+        append(activeSection, [make(document, 'h2', 'Vault locked on this page'), make(document, 'p', 'Authentication and sync on this page are paused. Locking clears persistent Vault root key material and requires the passphrase next time. Locking cannot revoke authentication cached by the browser or sessions maintained by a server.'), securityNotice(document)]);
         var form = make(document, 'form');
         var input = make(document, 'input');
         input.type = 'password';
@@ -184,7 +192,7 @@ function VaultUI() {
         submit.type = 'submit';
         var message = make(document, 'p');
         message.setAttribute('role', 'status');
-        append(form, [passField, submit, message]);
+        append(form, [passField, securityNotice(document), submit, message]);
         activeSection.appendChild(form);
         form.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -226,7 +234,7 @@ function VaultUI() {
         retry.type = 'button';
         retry.addEventListener('click', startLock);
         append(activeSection, [make(activeSection.ownerDocument, 'h2', 'Global lock is incomplete'),
-            make(activeSection.ownerDocument, 'p', 'This page remains paused and will not restore credentials, but its state cannot prove that other pages, the background process or session keys were cleared. Retry; do not use the extension until this succeeds.'), retry]);
+            make(activeSection.ownerDocument, 'p', 'This page remains paused and will not restore credentials, but global cleanup may have left session or persistent Vault key material behind. Retry; do not use the extension until global lock succeeds.'), retry]);
     }
 
     function startLock() {
@@ -257,7 +265,7 @@ function VaultUI() {
         lock.type = 'button';
         var status = make(document, 'p', 'The Vault is unlocked. Authentication and sync can run.');
         lock.addEventListener('click', startLock);
-        append(activeSection, [make(document, 'h2', 'Vault unlocked'), status, lock]);
+        append(activeSection, [make(document, 'h2', 'Vault unlocked'), status, securityNotice(document), lock]);
     }
 
     function setBusy(form, busy) {

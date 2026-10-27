@@ -146,6 +146,9 @@ async function main() {
     });
     assert.throws(function() { Sync.validateEndpoint('https://user:secret@webdav.example.net/sync.json'); }, /separate fields/);
     assert.throws(function() { Sync.validateEndpoint('https://webdav.example.net/sync.json?token=secret'); }, /URL query/);
+    ['?auth-user=dummy', '?page=1', '?'].forEach(function(query) {
+        assert.throws(function() { Sync.validateEndpoint('https://webdav.example.net/sync.json' + query); }, /URL query/);
+    });
     assert.throws(function() { Sync.validateEndpoint('https://webdav.example.net/sync.json#fragment'); }, /fragment/);
 
     var rejectedFetches = 0;
@@ -153,6 +156,7 @@ async function main() {
     global.fetch = function() { rejectedFetches++; return Promise.reject(new Error('HTTP must not reach fetch')); };
     await rejects(Sync.readRemote({ endpoint: 'http://localhost/loopback', username: '', password: '' }), 'HTTPS is required');
     await rejects(Sync.putRemote({ endpoint: 'http://127.0.0.1/loopback', username: '', password: '' }, { format: 'fixture' }, ''), 'HTTPS is required');
+    await rejects(Sync.readRemote({ endpoint: 'https://webdav.example.net/sync.json?auth-user=dummy', username: '', password: '' }), 'URL query');
     assert.strictEqual(rejectedFetches, 0, 'direct runtime calls must reject HTTP before fetch');
     refuseSecretUse = true;
     await rejects(Sync.readRemote({ endpoint: 'https://example.test/revoked', username: 'dummy', password: 'dummy' }), 'Vault is locked');
@@ -321,6 +325,7 @@ async function main() {
         global.fetch = function() { invalidEtagFetched = true; return Promise.reject(new Error('must not fetch')); };
         await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '*'), 'valid strong ETag');
         await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, null), 'valid strong ETag');
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, 'W/"gzip-weak"'), 'valid strong ETag');
         assert.strictEqual(invalidEtagFetched, false, 'an invalid existing-file validator must fail before any PUT');
 
         global.fetch = function() {

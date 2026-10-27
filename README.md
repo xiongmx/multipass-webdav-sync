@@ -10,14 +10,14 @@ This is an unofficial fork of [MultiPass for HTTP Basic Authentication](https://
 
 1. Create a vault with a password you can remember. There is no password-recovery backdoor.
 2. Add URL-matching rules and HTTP Basic credentials for trusted websites. On plain HTTP, credentials are sent without transport encryption; prefer HTTPS.
-3. Unlock the vault after restarting the browser. A matching origin-server Basic authentication challenge can receive saved credentials using the challenged website's HTTP or HTTPS protocol.
+3. After creating or unlocking the vault, it remains unlocked across browser or app restarts until you click **Lock Vault**. A matching origin-server Basic authentication challenge can receive saved credentials using the challenged website's HTTP or HTTPS protocol.
 4. Optionally authorize WebDAV synchronization separately on each device and configure your own HTTPS WebDAV file URL and account. The server must support GET, PUT, conditional requests, and strong ETags.
 
 Rules can match HTTP and HTTPS websites. Proxy-authentication and non-Basic challenges are rejected. The extension does not read page text or form contents.
 
 ## Vault and synchronization
 
-Version 1.1.2 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. The chosen vault password is first processed with SHA-256 and then used as input to PBKDF2-HMAC-SHA-256 with 600,000 iterations. The original vault password is not stored or sent to WebDAV. Password-derived root material is held in trusted extension session storage; restarting the browser locks the vault.
+Version 1.1.4 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. The chosen vault password is first processed with SHA-256 and then used as input to PBKDF2-HMAC-SHA-256 with 600,000 iterations. The original vault password is not stored or sent to WebDAV. The extension keeps only the password-derived Vault root material in local extension storage so the Vault stays unlocked after restart; clicking **Lock Vault** clears it and requires the passphrase again. Anyone with access to the browser profile or extension context may use the Vault and decrypt local data or remote sync ciphertext until it is locked, so do not use this behavior on a shared device. Other local credential and WebDAV values remain encrypted.
 
 Local credential rules, WebDAV account values, temporary values, backups, synchronization metadata, JSON exports, and WebDAV synchronization files are encrypted. The WebDAV provider still receives its own account authorization and can observe the endpoint, request timing and size, and metadata such as ETags. ETags and hashes detect changes and conflicts; they are not encryption and do not prevent a malicious rollback.
 

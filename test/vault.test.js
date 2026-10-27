@@ -5,7 +5,7 @@ var webcrypto = require('crypto').webcrypto;
 require('./helpers/web_locks').installGlobalWebLocks();
 if(!global.crypto) Object.defineProperty(global, 'crypto', { value: webcrypto, configurable: true });
 var localData = Object.create(null), sessionData = Object.create(null), listeners = [];
-var runtime = { lastError: null }, failLocalWrite = false, failSessionRemove = false, failSessionSet = false, failUnlockedMarker = false;
+var runtime = { lastError: null }, failLocalWrite = false, failSessionRemove = false, failSessionSet = false, failUnlockedMarker = false, failRememberRemove = false, corruptRememberWrite = false;
 var delayedSessionGet = null, holdSessionGet = false;
 function copy(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function emit(changes, area) { listeners.slice().forEach(function(fn) { fn(copy(changes), area); }); }
@@ -31,20 +31,30 @@ function store(data, area) {
                 runtime.lastError = { message: 'Simulated session set failure.' };
                 callback(); runtime.lastError = null; return;
             }
+            if(area === 'local' && corruptRememberWrite && Object.prototype.hasOwnProperty.call(values, 'vaultRememberedRootMaterial')) {
+                values = copy(values);
+                values.vaultRememberedRootMaterial = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+            }
             var changes = {};
             Object.keys(values).forEach(function(key) {
                 changes[key] = { oldValue: copy(data[key]), newValue: copy(values[key]) };
                 data[key] = copy(values[key]);
             });
-            emit(changes, area); callback();
+            emit(changes, area);
+            callback();
         },
         remove: function(keys, callback) {
             if(area === 'session' && failSessionRemove) {
                 runtime.lastError = { message: 'Simulated session removal failure.' };
                 callback(); runtime.lastError = null; return;
             }
+            var names = Array.isArray(keys) ? keys : [keys];
+            if(area === 'local' && failRememberRemove && names.indexOf('vaultRememberedRootMaterial') !== -1) {
+                runtime.lastError = { message: 'Simulated remembered-root removal failure.' };
+                callback(); runtime.lastError = null; return;
+            }
             var changes = {};
-            (Array.isArray(keys) ? keys : [keys]).forEach(function(key) {
+            names.forEach(function(key) {
                 changes[key] = { oldValue: copy(data[key]) }; delete data[key];
             });
             emit(changes, area); callback();
@@ -77,12 +87,21 @@ async function publicationFailure() {
     assert(localData.vaultConfig);
     assert.strictEqual(localData.vaultRevocationState.locked, true);
     assert.strictEqual(sessionData.vaultRootMaterial, undefined, 'failed publication must remove root');
+    assert.strictEqual(localData.vaultRememberedRootMaterial, undefined, 'failed publication must remove persistent root material');
     var Fresh = context(); await Fresh.ready(); assert.strictEqual(Fresh.isUnlocked(), false);
     failUnlockedMarker = false;
     await A.unlock(phrase);
     assert.deepStrictEqual(await A.getAsync('credentials'), expected, 'same passphrase must recover migrated data');
     assert.strictEqual(B.isUnlocked(), true);
     await A.lock();
+    var beforeRootFailure = unlockEvents;
+    corruptRememberWrite = true;
+    await assert.rejects(A.unlock(phrase), /publication|Persistent Vault root/);
+    corruptRememberWrite = false;
+    assert.strictEqual(unlockEvents, beforeRootFailure, 'failed persistent-root read-back must never publish an unlock');
+    assert.strictEqual(localData.vaultRevocationState.locked, true);
+    assert.strictEqual(localData.vaultRememberedRootMaterial, undefined, 'failed root verification must clear the persistent root');
+    assert.strictEqual(sessionData.vaultRootMaterial, undefined, 'failed root verification must leave no session root');
     delete localData.vaultRevocationState;
     emit({ vaultRevocationState: { newValue: undefined } }, 'local');
     var beforeFailedUnlock = unlockEvents;
@@ -95,10 +114,98 @@ async function publicationFailure() {
     Object.keys(localData).forEach(function(k) { delete localData[k]; });
     Object.keys(sessionData).forEach(function(k) { delete sessionData[k]; });
     listeners = [];
-    console.log('Publication failure tests passed: no early unlock, session rollback, fresh-context locked state and same-passphrase recovery.');
+    console.log('Publication failure tests passed: no early unlock, persistent-root read-back rollback, session rollback, fresh-context locked state and same-passphrase recovery.');
+}
+async function persistentUnlockSemantics() {
+    Object.keys(localData).forEach(function(k) { delete localData[k]; });
+    Object.keys(sessionData).forEach(function(k) { delete sessionData[k]; });
+    listeners = [];
+    failRememberRemove = false;
+    var phrase = 'persistent-unlock regression phrase';
+    var key = 'vaultRememberedRootMaterial';
+    var first = context();
+    await first.create(phrase);
+    assert.strictEqual(typeof localData[key], 'string', 'Vault creation persists root material by default');
+    assert.strictEqual(localData[key], sessionData.vaultRootMaterial, 'only the session root is persisted for restart recovery');
+    await first.setAsync('rememberTestValue', { secret: 'encrypted-local-fixture' });
+    await first.setAsync('webdavTestSettings', { password: 'dummy-webdav-secret' });
+    assert.strictEqual(localData.rememberTestValue.format, 'multipass-vault-v1');
+    assert(!JSON.stringify(localData.rememberTestValue).includes('encrypted-local-fixture'), 'local values remain encrypted when the Vault is unlocked');
+    assert(!JSON.stringify(localData).includes('dummy-webdav-secret'), 'WebDAV passwords are never persisted in plaintext');
+    assert(!JSON.stringify(localData).includes(phrase), 'the Vault passphrase is never persisted');
+    delete localData[key];
+    var upgradedSession = context();
+    await upgradedSession.ready();
+    assert.strictEqual(upgradedSession.isUnlocked(), true, 'an active legacy session remains unlocked during upgrade');
+    assert.strictEqual(localData[key], sessionData.vaultRootMaterial, 'an active legacy session adopts persistent unlock automatically');
+    delete sessionData.vaultRootMaterial;
+    var unlockedRestart = context();
+    await unlockedRestart.ready();
+    assert.strictEqual(unlockedRestart.isUnlocked(), true, 'Vault restores unlocked state after browser restart by default');
+    assert.deepStrictEqual(await unlockedRestart.getAsync('rememberTestValue'), { secret: 'encrypted-local-fixture' });
+    await unlockedRestart.lock();
+    assert.strictEqual(localData[key], undefined, 'manual lock clears persistent remembered material');
+    delete sessionData.vaultRootMaterial;
+    var lockedRestart = context();
+    await lockedRestart.ready();
+    assert.strictEqual(lockedRestart.isUnlocked(), false, 'a manual lock cannot be undone by browser restart');
+    await lockedRestart.unlock(phrase);
+    delete sessionData.vaultRootMaterial;
+    var secondRestart = context();
+    await secondRestart.ready();
+    assert.strictEqual(secondRestart.isUnlocked(), true, 'unlock restores persistent unlocked state on the next restart');
+    assert.strictEqual(localData[key], sessionData.vaultRootMaterial);
+    failRememberRemove = true;
+    await assert.rejects(secondRestart.lock(), /Global vault lock could not be completed|remembered/);
+    assert.strictEqual(localData.vaultRevocationState.locked, true, 'durable revocation is committed even if remembered-key cleanup fails');
+    assert.strictEqual(secondRestart.isUnlocked(), false, 'cleanup failure must still zeroize the current context');
+    await assert.rejects(secondRestart.unlock(phrase), /remembered/);
+    assert.strictEqual(secondRestart.isUnlocked(), false, 'unlock cannot publish a new session while stale remembered material cannot be revoked');
+    failRememberRemove = false;
+    var cleanupRestart = context();
+    await cleanupRestart.ready();
+    assert.strictEqual(cleanupRestart.isUnlocked(), false, 'a retained remembered key cannot bypass a locked revocation marker');
+    assert.strictEqual(localData[key], undefined, 'startup cleanup removes stale remembered key material after lock failure');
+    await cleanupRestart.unlock(phrase);
+    assert.strictEqual(typeof localData[key], 'string', 'recovery unlock restores automatic persistence');
+    failLocalWrite = true;
+    failRememberRemove = true;
+    await assert.rejects(cleanupRestart.lock(), /Global vault lock|remembered/);
+    assert.strictEqual(localData.vaultRevocationState, undefined, 'failed marker write must remove the old unlock permit');
+    assert.strictEqual(typeof localData[key], 'string', 'double-fault fixture must actually retain the remembered root');
+    delete sessionData.vaultRootMaterial;
+    var doubleFailureRestart = context();
+    await assert.rejects(doubleFailureRestart.ready(), function(error) { return error.recoveryLocked === false; });
+    assert.strictEqual(doubleFailureRestart.isUnlocked(), false, 'missing unlock permit must prevent restart restoration despite retained root');
+    failLocalWrite = false;
+    failRememberRemove = false;
+    await doubleFailureRestart.lock();
+    await doubleFailureRestart.ready();
+    assert.strictEqual(localData[key], undefined, 'a successful retry must remove retained root material');
+    await cleanupRestart.unlock(phrase);
+    var previousRevocation = copy(localData.vaultRevocationState);
+    localData.vaultRevocationState = { locked: true, generation: previousRevocation.generation + 1 };
+    emit({ vaultRevocationState: { oldValue: previousRevocation, newValue: copy(localData.vaultRevocationState) } }, 'local');
+    failSessionRemove = true;
+    failSessionSet = true;
+    var independentCleanup = context();
+    await assert.rejects(independentCleanup.ready(), function(error) { return error.recoveryLocked === false; });
+    assert.strictEqual(independentCleanup.isUnlocked(), false, 'startup cleanup remains locked when session removal and fallback both fail');
+    assert.strictEqual(localData[key], undefined, 'remembered-key cleanup still runs after independent session cleanup fails');
+    assert.strictEqual(localData.vaultRevocationState.locked, true, 'failed session cleanup cannot weaken durable revocation');
+    failSessionRemove = false;
+    failSessionSet = false;
+    await cleanupRestart.lock();
+    assert.strictEqual(sessionData.vaultRootMaterial, undefined, 'a later successful retry clears the stale session root');
+
+    Object.keys(localData).forEach(function(k) { delete localData[k]; });
+    Object.keys(sessionData).forEach(function(k) { delete sessionData[k]; });
+    listeners = [];
+    console.log('Persistent-unlock tests passed: default persistence, encrypted local values, restart recovery, explicit-lock clearing and fail-closed revocation.');
 }
 async function main() {
     await publicationFailure();
+    await persistentUnlockSemantics();
     var phrase = 'dummy vault phrase for regression only';
     var original = {
         credentials: { oldHash: { url: '^https://example.test/', username: 'dummy-user', password: 'dummy-migration-secret', priority: 1 } },
@@ -129,8 +236,9 @@ async function main() {
         assert.deepStrictEqual(await Vault.getAsync(key), original[key], 'migration must not delete encrypted ' + key);
     }
     var persisted = JSON.stringify(localData);
-    ['dummy-migration-secret', 'dummy-temporary-secret', 'dummy-webdav-secret', 'dummy-backup-secret', phrase, sessionData.vaultRootMaterial].forEach(function(secret) {
-        assert(!persisted.includes(secret), 'no secret or equivalent root in persistent storage');
+    assert.strictEqual(localData[Vault.constants.rememberedKey], sessionData.vaultRootMaterial, 'only root key material is persisted for automatic unlock');
+    ['dummy-migration-secret', 'dummy-temporary-secret', 'dummy-webdav-secret', 'dummy-backup-secret', phrase].forEach(function(secret) {
+        assert(!persisted.includes(secret), 'no plaintext passphrase or account secret in persistent storage');
     });
     var first = await Vault.encrypt({ value: 'dummy-value' }, 'export');
     var second = await Vault.encrypt({ value: 'dummy-value' }, 'export');
@@ -186,17 +294,18 @@ async function main() {
     assert.strictEqual(localData.vaultRevocationState.locked, true);
     await assert.rejects(Other.getAsync('credentials'), /locked/);
     await assert.rejects(Other.encrypt({ dummy: true }, 'export'), /locked/);
-    var FreshFailed = context(); await FreshFailed.ready();
+    var FreshFailed = context(); await assert.rejects(FreshFailed.ready(), function(error) { return error.recoveryLocked === false; });
     assert.strictEqual(FreshFailed.isUnlocked(), false, 'new context must not revive a retained stale session root');
-    await assert.rejects(FreshFailed.getAsync('credentials'), /locked/);
+    await assert.rejects(FreshFailed.getAsync('credentials'), /locked|Global vault lock/);
     assert(!JSON.stringify(localData).includes(staleRoot), 'revocation marker must not contain root material');
     failSessionRemove = false; failSessionSet = false;
     await Vault.lock();
     assert.strictEqual(sessionData.vaultRootMaterial, undefined);
     await Vault.unlock(phrase);
     failLocalWrite = true;
-    await assert.rejects(Vault.lock(), /could not be confirmed|storage failure/);
+    await Vault.lock();
     failLocalWrite = false;
+    assert.strictEqual(localData.vaultRevocationState, undefined, 'marker removal is a verified durable fail-closed fallback');
     assert.strictEqual(Other.isUnlocked(), false, 'session cleanup still runs when local marker write fails');
     assert.strictEqual(sessionData.vaultRootMaterial, undefined);
     var FreshMarkerFailure = context(); await FreshMarkerFailure.ready();

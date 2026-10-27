@@ -50,7 +50,7 @@ module.exports = (function() {
     function dispatchChanges(changes, namespace) {
         if(namespace !== 'local' || !changes) return;
         Object.keys(changes).forEach(function(key) {
-            if(key === CONFIG_KEY || key === LEGACY_VALUES_KEY || key === Vault.constants.revocationKey) return;
+            if(key === CONFIG_KEY || key === LEGACY_VALUES_KEY || key === Vault.constants.revocationKey || key === Vault.constants.rememberedKey) return;
             queueDeliver(key, function() {
                 var envelope = changes[key].newValue;
                 if(envelope === undefined) { deliver(key, undefined); return Promise.resolve(); }
