@@ -2,6 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import releaseVersion from './release-version.cjs';
+import { request } from './safe-fetch.mjs';
+
+const { parseReleaseVersion } = releaseVersion;
+
 const API_ROOT = 'https://api.addons.microsoftedge.microsoft.com';
 const ALLOWED_PRODUCT_ID = '59f80db2-0cdb-44dc-9a9e-c723b24190e2';
 const OPERATION_TIMEOUT_MS = 10 * 60 * 1000;
@@ -13,11 +18,11 @@ function fail(message) {
 
 function checkInputs() {
   const tag = process.env.RELEASE_TAG ?? '';
-  const match = /^v?((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))$/.exec(tag);
-  if (!match) fail('Release tag is not a stable semantic version.');
+  const versionFromTag = parseReleaseVersion(tag);
+  if (!versionFromTag) fail('Release tag is not a stable semantic version.');
 
   const version = process.env.RELEASE_VERSION ?? '';
-  if (match[1] !== version) fail('Release tag and validated package version do not match.');
+  if (versionFromTag !== version) fail('Release tag and validated package version do not match.');
 
   const productId = (process.env.EDGE_ADDONS_PRODUCT_ID ?? '').trim();
   if (productId !== ALLOWED_PRODUCT_ID) {
@@ -26,7 +31,7 @@ function checkInputs() {
 
   const apiKey = process.env.EDGE_ADDONS_API_KEY;
   const clientId = process.env.EDGE_ADDONS_CLIENT_ID;
-  if (!apiKey) fail('Required GitHub Actions setting EDGE_ADDONS_API_KEY is unavailable.');
+  if (!apiKey) fail('Required encrypted GitHub Actions secret EDGE_ADDONS_API_KEY is unavailable; place the existing API key in the Actions Secrets store. No API request was made.');
   if (!clientId) fail('Required GitHub Actions setting EDGE_ADDONS_CLIENT_ID is unavailable.');
 
   return { tag, version, apiKey, clientId, productId };
@@ -66,20 +71,6 @@ function authHeaders(apiKey, clientId) {
     Authorization: `ApiKey ${apiKey}`,
     'X-ClientID': clientId,
   };
-}
-
-async function request(url, options, label) {
-  let response;
-  try {
-    response = await fetch(url, {
-      ...options,
-      signal: AbortSignal.timeout(60_000),
-    });
-  } catch {
-    fail(`${label} request failed before an HTTP response; it was not retried.`);
-  }
-  if (!response.ok) fail(`${label} was rejected with HTTP ${response.status}; the response body was not logged.`);
-  return response;
 }
 
 function operationIdFromLocation(location, productId, statusPath) {

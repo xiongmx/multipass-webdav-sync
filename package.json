@@ -16,7 +16,7 @@
     "build:firefox-android": "gulp build-firefox-android",
     "dist": "gulp dist",
     "dist:firefox-android": "gulp dist-firefox-android",
-    "test": "node test/storage.test.js && node test/vault.test.js && node test/vault_ui.test.js && node test/auth_https.test.js && node test/credential_safety.test.js && node test/credential_concurrency.test.js && node test/options_crypto.test.js && node test/webdav_sync.test.js && node test/i18n.test.js",
+    "test": "node test/storage.test.js && node test/vault.test.js && node test/vault_ui.test.js && node test/auth_https.test.js && node test/credential_safety.test.js && node test/credential_concurrency.test.js && node test/options_crypto.test.js && node test/webdav_sync.test.js && node test/i18n.test.js && node test/edge_addons_release.test.js",
     "test:packages": "node test/package_https.test.js && node test/package_i18n.test.js",
     "test:webdav-e2e": "node test/webdav_e2e.test.js"
   },
