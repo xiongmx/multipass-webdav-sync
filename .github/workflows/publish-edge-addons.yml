@@ -79,5 +79,4 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           EDGE_ADDONS_API_KEY: ${{ secrets.EDGE_ADDONS_API_KEY }}
           EDGE_ADDONS_CLIENT_ID: ${{ secrets.EDGE_ADDONS_CLIENT_ID || vars.EDGE_ADDONS_CLIENT_ID }}
-          EDGE_ADDONS_PRODUCT_ID: ${{ secrets.EDGE_ADDONS_PRODUCT_ID || vars.EDGE_ADDONS_PRODUCT_ID }}
         run: node scripts/publish-edge-addons.mjs

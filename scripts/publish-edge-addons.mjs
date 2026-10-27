@@ -4,8 +4,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import releaseVersion from './release-version.cjs';
 import { request } from './safe-fetch.mjs';
+import resolveProductIdModule from './resolve-product-id.cjs';
 
 const { parseReleaseVersion } = releaseVersion;
+const { resolveProductId } = resolveProductIdModule;
 
 const API_ROOT = 'https://api.addons.microsoftedge.microsoft.com';
 const ALLOWED_PRODUCT_ID = '59f80db2-0cdb-44dc-9a9e-c723b24190e2';
@@ -24,10 +26,7 @@ function checkInputs() {
   const version = process.env.RELEASE_VERSION ?? '';
   if (versionFromTag !== version) fail('Release tag and validated package version do not match.');
 
-  const productId = (process.env.EDGE_ADDONS_PRODUCT_ID ?? '').trim();
-  if (productId !== ALLOWED_PRODUCT_ID) {
-    fail('Configured product ID is missing or does not match the allowlisted existing product.');
-  }
+  const productId = resolveProductId(process.env.EDGE_ADDONS_PRODUCT_ID, ALLOWED_PRODUCT_ID);
 
   const apiKey = process.env.EDGE_ADDONS_API_KEY;
   const clientId = process.env.EDGE_ADDONS_CLIENT_ID;

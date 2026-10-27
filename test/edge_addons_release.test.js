@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { parseReleaseVersion } = require('../scripts/release-version.cjs');
+const { resolveProductId } = require('../scripts/resolve-product-id.cjs');
 
 const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/publish-edge-addons.yml'), 'utf8');
 const triggerBlock = workflow.match(/^on:\n  push:\n    tags:\n((?:      - '[^']+'\n)+)/m);
@@ -15,10 +16,17 @@ assert.doesNotMatch(workflow, /^\s+branches:/m, 'workflow must not run for branc
 assert.doesNotMatch(workflow, /^\s+(?:workflow_dispatch|pull_request|schedule):/m, 'workflow must have no manual, PR, or scheduled trigger');
 assert.match(workflow, /EDGE_ADDONS_API_KEY:\s*\$\{\{\s*secrets\.EDGE_ADDONS_API_KEY\s*\}\}/);
 assert.doesNotMatch(workflow, /vars\.EDGE_ADDONS_API_KEY/, 'the API key must never fall back to a plain Actions variable');
+assert.doesNotMatch(workflow, /EDGE_ADDONS_PRODUCT_ID/, 'workflow must not depend on an unavailable product-ID variable');
 
 const publisher = fs.readFileSync(path.join(__dirname, '../scripts/publish-edge-addons.mjs'), 'utf8');
 assert.match(publisher, /Required encrypted GitHub Actions secret EDGE_ADDONS_API_KEY is unavailable/);
 assert.match(publisher, /No API request was made/);
+
+const allowlistedProductId = '59f80db2-0cdb-44dc-9a9e-c723b24190e2';
+assert.equal(resolveProductId(undefined, allowlistedProductId), allowlistedProductId, 'missing product ID must use the hardcoded target');
+assert.equal(resolveProductId('', allowlistedProductId), allowlistedProductId, 'empty product ID must use the hardcoded target');
+assert.equal(resolveProductId(` ${allowlistedProductId} `, allowlistedProductId), allowlistedProductId);
+assert.throws(() => resolveProductId('different-product', allowlistedProductId), /conflicts with the allowlisted/);
 
 function candidateGlobMatches(pattern, tag) {
   const regex = pattern
@@ -83,7 +91,7 @@ async function verifyRedirectIsRejected() {
 }
 
 verifyRedirectIsRejected()
-  .then(() => process.stdout.write('Edge Add-ons release guard and redirect tests passed.\n'))
+  .then(() => process.stdout.write('Edge Add-ons release, product-ID, and redirect tests passed.\n'))
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;
