@@ -6,9 +6,12 @@ var WebDAVSync = function() {
     var META_KEY = 'multipassWebdavSyncMeta';
     var BACKUPS_KEY = 'multipassWebdavBackups';
     var AUTO_STATUS_KEY = 'multipassWebdavAutoStatus';
+    var CONSENT_VERSION = 1;
+    var REQUEST_TIMEOUT_MS = 30000;
     var ALARM_NAME = 'multipass-webdav-auto-sync';
-    var SYNC_FORMAT = 'multipass-webdav-plain-v1';
+    var SYNC_FORMAT = 'multipass-webdav-sync-v2';
     var LEGACY_ENCRYPTED_FORMAT = 'multipass-webdav-encrypted-v1';
+    var LEGACY_PLAIN_FORMAT = 'multipass-webdav-plain-v1';
     var MAX_REMOTE_FILE_BYTES = 5 * 1024 * 1024;
     var credentialStorage;
     var statusElement;
@@ -22,6 +25,21 @@ var WebDAVSync = function() {
     var backupAvailable = false;
     var backgroundInitialized = false;
     var automaticRun = null;
+    var activeControllers = [];
+    var Vault = null;
+    var vaultObserversInstalled = false;
+
+    function vault() {
+        if(Vault) return Vault;
+        if(globalThis && globalThis.Vault) return (Vault = globalThis.Vault);
+        try { Vault = require('./vault'); return Vault; } catch(e) { throw new Error('Secure Vault is unavailable. Unlock the extension before using WebDAV sync.'); }
+    }
+
+    function requireUnlocked() {
+        var v = vault();
+        if(v.isUnlocked && !v.isUnlocked()) return Promise.reject(new Error('Vault is locked. Unlock the extension before using WebDAV sync.'));
+        return Promise.resolve(v);
+    }
 
     function setStatus(message, isError) {
         if(!statusElement) return;
@@ -49,23 +67,22 @@ var WebDAVSync = function() {
     }
 
     function localGet(keys) {
-        return new Promise(function(resolve, reject) {
-            chrome.storage.local.get(keys, function(result) {
-                var error = chrome.runtime && chrome.runtime.lastError;
-                if(error) reject(new Error(error.message || String(error)));
-                else resolve(result || {});
+        var requested = Array.isArray(keys) ? keys : [keys];
+        return requireUnlocked().then(function(v) {
+            return Promise.all(requested.map(function(key) { return v.getAsync(key, undefined); })).then(function(values) {
+                var result = {}; requested.forEach(function(key, i) { if(values[i] !== undefined) result[key] = values[i]; }); return result;
             });
         });
     }
 
     function localSet(values) {
-        return new Promise(function(resolve, reject) {
-            chrome.storage.local.set(values, function() {
-                var error = chrome.runtime && chrome.runtime.lastError;
-                if(error) reject(new Error(error.message || String(error)));
-                else resolve();
-            });
+        return requireUnlocked().then(function(v) {
+            return Promise.all(Object.keys(values).map(function(key) { return v.setAsync(key, values[key]); })).then(function() {});
         });
+    }
+
+    function localRemove(keys) {
+        return Promise.resolve(vault()).then(function(v) { return v.removeAsync(keys); });
     }
 
     function validateEndpoint(endpoint) {
@@ -76,9 +93,8 @@ var WebDAVSync = function() {
             throw new Error('Enter a valid HTTPS WebDAV file URL.');
         }
 
-        var isLoopback = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]';
-        if(parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopback)) {
-            throw new Error('HTTPS is required. Plain HTTP is allowed only for localhost testing.');
+        if(parsed.protocol !== 'https:') {
+            throw new Error('HTTPS is required for every WebDAV endpoint, including localhost.');
         }
         if(parsed.username || parsed.password) {
             throw new Error('Do not put a username or password in the URL; use the separate fields.');
@@ -178,8 +194,8 @@ var WebDAVSync = function() {
     }
 
     function parseSyncDocument(document) {
-        if(document && document.format === LEGACY_ENCRYPTED_FORMAT) {
-            return Promise.reject(new Error('This WebDAV file uses the retired encrypted format. Download a copy, then use Push local to replace it explicitly.'));
+        if(document && (document.format === LEGACY_ENCRYPTED_FORMAT || document.format === LEGACY_PLAIN_FORMAT)) {
+            return Promise.reject(new Error('This WebDAV file is a legacy plaintext/retired format. Automatic sync refuses it; download a backup, then use Push local and explicitly confirm migration.'));
         }
         if(!document || document.format !== SYNC_FORMAT || document.schema !== 1 ||
             !Number.isSafeInteger(document.updatedAt) || document.updatedAt <= 0 ||
@@ -235,6 +251,12 @@ var WebDAVSync = function() {
     }
 
     function request(endpoint, settings, method, body, condition) {
+        try {
+            endpoint = validateEndpoint(endpoint);
+        } catch(error) {
+            return Promise.reject(error);
+        }
+        if(vault().isUnlocked && !vault().isUnlocked()) return Promise.reject(new Error('Vault is locked; WebDAV network access is stopped.'));
         if(body && encodeText(body).byteLength > MAX_REMOTE_FILE_BYTES) {
             return Promise.reject(new Error('The WebDAV file exceeds the 5 MB safety limit.'));
         }
@@ -244,13 +266,35 @@ var WebDAVSync = function() {
         }
         if(body) headers['Content-Type'] = 'application/json; charset=utf-8';
         if(condition) headers[condition.name] = condition.value;
-        return fetch(endpoint, {
+        var controller = typeof AbortController === 'function' ? new AbortController() : null;
+        if(controller) activeControllers.push(controller);
+        var timer = controller ? setTimeout(function() { controller.abort(); }, REQUEST_TIMEOUT_MS) : null;
+        var options = {
             method: method,
             headers: headers,
             body: body || undefined,
             credentials: 'omit',
             cache: 'no-store',
             redirect: 'error'
+        };
+        if(controller) options.signal = controller.signal;
+        var networkStarted = false;
+        return Promise.resolve().then(function() { return vault().verifyUnlocked(); }).then(function() {
+            if(controller && controller.signal.aborted) throw new Error('Vault locked before WebDAV network access.');
+            networkStarted = true;
+            return fetch(endpoint, options);
+        }).then(function(response) {
+            if(timer) clearTimeout(timer);
+            if(controller) { var activeIndex = activeControllers.indexOf(controller); if(activeIndex !== -1) activeControllers.splice(activeIndex, 1); }
+            return response;
+        }, function(error) {
+            if(timer) clearTimeout(timer);
+            if(controller) { var activeIndex = activeControllers.indexOf(controller); if(activeIndex !== -1) activeControllers.splice(activeIndex, 1); }
+            if(networkStarted && error && (error.name === 'AbortError' || (controller && controller.signal.aborted))) {
+                if(method === 'PUT') throw new Error('The WebDAV write timed out; it may have been written. Check the remote file before retrying.');
+                throw new Error('The WebDAV request timed out; no automatic retry was attempted.');
+            }
+            throw error;
         });
     }
 
@@ -297,19 +341,32 @@ var WebDAVSync = function() {
             var contentLength = Number(response.headers.get('Content-Length'));
             if(Number.isFinite(contentLength) && contentLength > MAX_REMOTE_FILE_BYTES) throw new Error('The WebDAV file exceeds the 5 MB safety limit.');
             return readRemoteText(response).then(function(text) {
-                var document;
-                try { document = JSON.parse(text); }
+                var envelope;
+                try { envelope = JSON.parse(text); }
                 catch(e) { throw new Error('The WebDAV file is not valid JSON.'); }
-                return fingerprintText(text).then(function(contentHash) {
-                    return { exists: true, etag: etag, document: document, contentHash: contentHash };
-                });
+                if(!envelope || envelope.format !== 'multipass-vault-v1') {
+                    if(settings.allowLegacyMigration && envelope && envelope.format === LEGACY_PLAIN_FORMAT) {
+                        var legacyDocument = Object.assign({}, envelope, { format: SYNC_FORMAT });
+                        return parseSyncDocument(legacyDocument).then(function(document) {
+                            return { exists: true, legacy: true, etag: etag, document: document, envelope: envelope, ciphertextBody: text, contentHash: null };
+                        });
+                    }
+                    throw new Error('The WebDAV file is legacy plaintext or unsupported; automatic sync refused it. Download a backup, then use Push local and explicitly confirm migration.');
+                }
+                return vault().decrypt(envelope, 'sync').then(function(document) {
+                    return fingerprintText(text).then(function(contentHash) {
+                        return { exists: true, etag: etag, document: document, envelope: envelope, ciphertextBody: text, contentHash: contentHash };
+                    });
+                }).catch(function(error) { if(error && /legacy plaintext/.test(error.message)) throw error; throw new Error('The WebDAV file could not be decrypted; unlock the same Vault or inspect the remote file.'); });
             });
         });
     }
 
     function putRemote(settings, document, etag) {
         var condition = etag ? { name: 'If-Match', value: etag } : { name: 'If-None-Match', value: '*' };
-        return request(settings.endpoint, settings, 'PUT', JSON.stringify(document), condition).then(function(response) {
+        return vault().encrypt(document, 'sync').then(function(envelope) {
+            return request(settings.endpoint, settings, 'PUT', JSON.stringify(envelope), condition);
+        }).then(function(response) {
             if(response.status === 412 || response.status === 409) {
                 throw new Error('The server rejected the conditional write. Local data was retained; inspect both copies before syncing again.');
             }
@@ -327,6 +384,7 @@ var WebDAVSync = function() {
             if(!settings.endpoint) throw new Error('Save a WebDAV URL before syncing.');
             settings.endpoint = validateEndpoint(settings.endpoint);
             settings.autoSyncIntervalMinutes = typeof settings.autoSyncIntervalMinutes === 'undefined' ? 0 : Number(settings.autoSyncIntervalMinutes);
+            if(settings.consentVersion !== CONSENT_VERSION) throw new Error('WebDAV sync is not authorized on this device. Review the disclosure and explicitly agree before saving or syncing.');
             if(!Number.isInteger(settings.autoSyncIntervalMinutes) || settings.autoSyncIntervalMinutes < 0 || settings.autoSyncIntervalMinutes > 10080) {
                 throw new Error('The saved automatic sync interval is invalid. Review the WebDAV settings.');
             }
@@ -601,9 +659,11 @@ var WebDAVSync = function() {
     }
 
     function ensureAutoSyncAlarm() {
+        if(vault().isUnlocked && !vault().isUnlocked()) return chrome.alarms ? clearAlarm() : Promise.resolve();
         if(!chrome.alarms) return Promise.reject(new Error('This browser does not provide the alarms API.'));
         return localGet(SETTINGS_KEY).then(function(result) {
             var settings = result[SETTINGS_KEY] || {};
+            if(settings.consentVersion !== CONSENT_VERSION) return clearAlarm();
             var interval = typeof settings.autoSyncIntervalMinutes === 'undefined' ? 0 : Number(settings.autoSyncIntervalMinutes);
             if(!Number.isInteger(interval) || interval < 0 || interval > 10080) {
                 return Promise.reject(new Error('The saved automatic sync interval is invalid. Review the WebDAV settings.'));
@@ -618,6 +678,7 @@ var WebDAVSync = function() {
 
     function initBackground(storage) {
         if(storage) credentialStorage = storage;
+        installVaultObservers();
         if(backgroundInitialized) return ensureAutoSyncAlarm();
         backgroundInitialized = true;
         if(chrome.alarms && chrome.alarms.onAlarm) {
@@ -646,7 +707,7 @@ var WebDAVSync = function() {
                             return confirmWritten(context.settings, etag, document).then(function(confirmed) {
                                 return setBaseline(etag, state.localCredentials, context.settings.endpoint, confirmed.document,
                                     confirmed.remote.contentHash, context.settings.username)
-                                    .then(function() { setStatus('Created the plaintext WebDAV file using If-None-Match. This device now has a sync baseline.'); });
+                                    .then(function() { setStatus('Created an encrypted WebDAV sync file using If-None-Match. This device now has a sync baseline.'); });
                             });
                         });
                     });
@@ -681,7 +742,7 @@ var WebDAVSync = function() {
                     if(!remote.etag || /^W\//i.test(remote.etag)) throw new Error('The WebDAV server must return a strong ETag before pulling.');
                     return parseSyncDocument(remote.document).then(function(remoteDocument) {
                         var count = Object.keys(remoteDocument.credentials).length;
-                        if(!window.confirm('Replace this device’s credentials with ' + count + ' entries from the plaintext WebDAV file? A local backup will be kept.')) return;
+                        if(!window.confirm('Replace this device’s credentials with ' + count + ' entries from the encrypted WebDAV file? A local backup will be kept.')) return;
                         return readRemote(context.settings).then(function(latestRemote) {
                             if(!latestRemote.exists || latestRemote.etag !== remote.etag || latestRemote.contentHash !== remote.contentHash) throw new Error('The remote file changed while you were confirming. Nothing was replaced; review it and retry.');
                             return fingerprint(getLocalCredentials()).then(function(currentDigest) {
@@ -690,7 +751,7 @@ var WebDAVSync = function() {
                                     .then(function() { return credentialStorage.replaceAll(remoteDocument.credentials); })
                                     .then(function() { return setBaseline(remote.etag, remoteDocument.credentials, context.settings.endpoint, remoteDocument,
                                         latestRemote.contentHash, context.settings.username); })
-                                    .then(function() { setStatus('Downloaded the plaintext WebDAV file. Previous local data is available as a backup.'); });
+                                    .then(function() { setStatus('Downloaded and decrypted the WebDAV file. Previous local data is available as an encrypted backup.'); });
                             });
                         });
                     });
@@ -703,14 +764,17 @@ var WebDAVSync = function() {
         return getSettings().then(function(context) {
             var localCredentials = getLocalCredentials();
             return fingerprint(localCredentials).then(function(localDigest) {
-                return readRemote(context.settings).then(function(remote) {
+                return readRemote(Object.assign({}, context.settings, { allowLegacyMigration: true })).then(function(remote) {
+                    if(remote.exists && remote.legacy) {
+                        if(!window.confirm('The remote file is legacy plaintext. Download/retain the local encrypted backup, then explicitly migrate it by replacing it with encrypted ciphertext? The legacy remote will not be preserved on the server.')) return;
+                    }
                     if(remote.exists && (!remote.etag || /^W\//i.test(remote.etag))) {
                         throw new Error('The WebDAV server must return a strong ETag. The existing remote file will not be overwritten.');
                     }
                     var count = Object.keys(localCredentials).length;
                     var promptText = remote.exists ?
-                        'Replace the current WebDAV file with this device’s ' + count + ' entries? The previous remote file will be saved as a local backup. The server stores the new file as plaintext.' :
-                        'Create a new plaintext WebDAV file with this device’s ' + count + ' entries?';
+                        'Replace the current WebDAV file with this device’s ' + count + ' entries? The previous remote file will be saved as an encrypted local backup. The server stores encrypted ciphertext.' :
+                        'Create a new encrypted WebDAV file with this device’s ' + count + ' entries?';
                     if(!window.confirm(promptText)) return;
                     var backup = remote.exists ? addRemoteBackup('Before manual push', remote.document) : Promise.resolve();
                     return backup.then(function() {
@@ -724,7 +788,7 @@ var WebDAVSync = function() {
                                             confirmed.remote.contentHash, context.settings.username);
                                     });
                                 });
-                            }).then(function() { setStatus('Uploaded this device’s credentials. The WebDAV server stores the file as plaintext.'); });
+                            }).then(function() { setStatus('Uploaded this device’s credentials. The WebDAV server stores ciphertext; it can still see the account, URL, timing, size and ETag.'); });
                         });
                     });
                 });
@@ -749,25 +813,30 @@ var WebDAVSync = function() {
             if(!Array.isArray(backups) || backups.length === 0) return;
             var backup = backups[0];
             var content = Object.prototype.hasOwnProperty.call(backup, 'remoteDocument') ? backup.remoteDocument : backup.credentials;
-            var blob = new Blob([JSON.stringify(content, null, 2)], { type: 'application/json' });
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'multipass-local-backup.json';
-            link.click();
-            setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
-            setStatus('Downloaded the latest local backup. Treat this file as sensitive; it may contain plaintext credentials.');
+            return vault().encrypt(content, 'backup').then(function(envelope) {
+                var blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'multipass-local-backup.json';
+                link.click();
+                setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+                setStatus('Downloaded the latest local backup as an encrypted Vault backup.');
+            });
         }).catch(function(error) { setStatus(error.message || 'Could not download the backup.', true); });
     }
 
     function saveSettings() {
         var endpoint = validateEndpoint(document.getElementById('webdav-url').value.trim());
         var interval = Number(intervalSelect.value);
+        var consent = document.getElementById('webdav-consent');
+        if(!consent || !consent.checked) throw new Error('Read and accept the WebDAV data-use disclosure before saving or enabling sync.');
         if(!Number.isInteger(interval) || interval < 0 || interval > 10080) throw new Error('Choose an automatic sync interval from 0 to 10080 minutes.');
         var settings = {
             endpoint: endpoint,
             username: document.getElementById('webdav-username').value,
             password: document.getElementById('webdav-password').value,
-            autoSyncIntervalMinutes: interval
+            autoSyncIntervalMinutes: interval,
+            consentVersion: CONSENT_VERSION
         };
         return localGet([SETTINGS_KEY, META_KEY]).then(function(result) {
             var oldSettings = result[SETTINGS_KEY] || {};
@@ -779,14 +848,77 @@ var WebDAVSync = function() {
             return localSet(values).then(function() {
                 return configureAutoSyncAlarm(interval);
             }).then(function() {
-                setStatus(interval ? 'WebDAV settings and automatic sync interval saved on this device. Credentials stay local; the remote file is plaintext.' : 'WebDAV settings saved on this device. Automatic sync is off.');
+                setStatus(interval ? 'WebDAV settings and automatic sync interval saved on this device. Credentials stay local; the remote file is encrypted ciphertext.' : 'WebDAV settings saved on this device. Automatic sync is off.');
                 return settings;
             });
         });
     }
 
+    function revokeSyncAuthorization() {
+        if(!window.confirm('Revoke WebDAV sync authorization? This stops automatic sync and clears the saved WebDAV password, sync baseline, backups, and consent on this device. Remote files and downloaded files are not deleted.')) return Promise.resolve();
+        stopForLock();
+        return localRemove([SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]).then(function() {
+            return configureAutoSyncAlarm(0);
+        }).then(function() {
+            ['webdav-url', 'webdav-username', 'webdav-password'].forEach(function(id) { var element = document.getElementById(id); if(element) element.value = ''; });
+            var consent = document.getElementById('webdav-consent'); if(consent) consent.checked = false;
+            setStatus('WebDAV sync authorization revoked. Remote and downloaded files still need separate deletion.', false);
+        });
+    }
+
+    function clearAllSensitiveData() {
+        if(!window.confirm('Clear all credentials and sensitive data stored on this device? Remote WebDAV files and already downloaded backup files are not deleted and must be removed separately.')) return Promise.resolve();
+        stopForLock();
+        var clearCredentials = vault().isUnlocked() && credentialStorage && typeof credentialStorage.clearAll === 'function' ? credentialStorage.clearAll() : Promise.resolve();
+        return clearCredentials.then(function() { return localRemove(['credentials', 'temporary-credentials', 'password-real', 'password-stars', SETTINGS_KEY, META_KEY, BACKUPS_KEY, AUTO_STATUS_KEY]); })
+            .then(function() { return configureAutoSyncAlarm(0); })
+            .then(function() { return vault().lock(); })
+            .then(function() { setStatus('All local credentials and sensitive WebDAV data were cleared. Remote and downloaded files were not deleted.', false); });
+    }
+
+
+    function stopForLock() {
+        activeControllers.slice().forEach(function(controller) { try { controller.abort(); } catch(e) { /* already aborted */ } });
+        activeControllers = [];
+        automaticRun = null;
+        if(chrome.alarms) clearAlarm().catch(function() {});
+        ['webdav-url', 'webdav-username', 'webdav-password'].forEach(function(id) { var el = typeof document !== 'undefined' && document.getElementById(id); if(el) el.value = ''; });
+        if(statusElement) setStatus('Vault locked. WebDAV sync and network access are stopped.', true);
+    }
+
+    function refreshSettingsUI() {
+        if(!statusElement || !vault().isUnlocked()) return Promise.resolve();
+        return localGet([SETTINGS_KEY, AUTO_STATUS_KEY]).then(function(result) {
+            if(!vault().isUnlocked()) return;
+            var settings = result[SETTINGS_KEY] || {};
+            document.getElementById('webdav-url').value = settings.endpoint || '';
+            document.getElementById('webdav-username').value = settings.username || '';
+            document.getElementById('webdav-password').value = settings.password || '';
+            var consent = document.getElementById('webdav-consent');
+            if(consent) consent.checked = settings.consentVersion === CONSENT_VERSION;
+            intervalSelect.value = String(Number(settings.autoSyncIntervalMinutes) || 0);
+            var record = result[AUTO_STATUS_KEY];
+            setStatus(record && record.message ? record.message : 'Vault unlocked. Review WebDAV settings and consent before syncing.', !!(record && record.isError));
+            updateBackupButton();
+        }).catch(function() { setStatus('Could not load saved WebDAV settings.', true); });
+    }
+
+    function installVaultObservers() {
+        if(vaultObserversInstalled) return;
+        vaultObserversInstalled = true;
+        vault().onLock(stopForLock);
+        vault().onUnlock(function() {
+            ensureAutoSyncAlarm().catch(function() {});
+            refreshSettingsUI();
+        });
+        if(chrome.storage.onChanged) chrome.storage.onChanged.addListener(function(changes, namespace) {
+            if(namespace === 'local' && changes[SETTINGS_KEY] && !changes[SETTINGS_KEY].newValue) stopForLock();
+        });
+    }
+
     function init(storage) {
         credentialStorage = storage;
+        installVaultObservers();
         statusElement = document.getElementById('webdav-status');
         pullButton = document.getElementById('webdav-pull');
         pushButton = document.getElementById('webdav-push');
@@ -795,21 +927,15 @@ var WebDAVSync = function() {
         syncButton = document.getElementById('webdav-sync');
         intervalSelect = document.getElementById('webdav-interval');
 
-        localGet([SETTINGS_KEY, AUTO_STATUS_KEY]).then(function(result) {
-            var settings = result[SETTINGS_KEY] || {};
-            document.getElementById('webdav-url').value = settings.endpoint || '';
-            document.getElementById('webdav-username').value = settings.username || '';
-            document.getElementById('webdav-password').value = settings.password || '';
-            intervalSelect.value = String(Number(settings.autoSyncIntervalMinutes) || 0);
-            var autoStatus = result[AUTO_STATUS_KEY];
-            if(autoStatus && autoStatus.message) setStatus(autoStatus.message, autoStatus.isError);
-        }).catch(function() { setStatus('Could not load saved WebDAV settings.', true); });
+        refreshSettingsUI();
 
         if(chrome.storage.onChanged) {
             chrome.storage.onChanged.addListener(function(changes, namespace) {
-                if(namespace === 'local' && changes[AUTO_STATUS_KEY] && changes[AUTO_STATUS_KEY].newValue) {
-                    var record = changes[AUTO_STATUS_KEY].newValue;
-                    setStatus(record.message, record.isError);
+                if(namespace === 'local' && changes[AUTO_STATUS_KEY] && changes[AUTO_STATUS_KEY].newValue && vault().isUnlocked()) {
+                    localGet(AUTO_STATUS_KEY).then(function(result) {
+                        var record = result[AUTO_STATUS_KEY];
+                        if(record && vault().isUnlocked()) setStatus(record.message, record.isError);
+                    }).catch(function() {});
                 }
             });
         }
@@ -827,6 +953,10 @@ var WebDAVSync = function() {
             runExclusive(function() { return saveSettings().then(pushLocal); });
         });
         backupButton.addEventListener('click', function() { runExclusive(downloadBackup); });
+        var revokeButton = document.getElementById('webdav-revoke');
+        if(revokeButton) revokeButton.addEventListener('click', function() { runExclusive(revokeSyncAuthorization); });
+        var clearSensitiveButton = document.getElementById('clear-all-sensitive');
+        if(clearSensitiveButton) clearSensitiveButton.addEventListener('click', function() { runExclusive(clearAllSensitiveData); });
         updateBackupButton();
     }
 
@@ -844,6 +974,8 @@ var WebDAVSync = function() {
         runAutomaticSync: runAutomaticSync,
         configureAutoSyncAlarm: configureAutoSyncAlarm,
         ensureAutoSyncAlarm: ensureAutoSyncAlarm,
+        revokeSyncAuthorization: revokeSyncAuthorization,
+        clearAllSensitiveData: clearAllSensitiveData,
         format: SYNC_FORMAT
     };
 }();

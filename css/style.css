@@ -456,3 +456,27 @@ table.form-table td output ul {
         padding-right: 0;
     }
 }
+
+/* The Vault panel is shared by options and popup; never require a wide desktop viewport. */
+#vault-ui {
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid #b9c9e9;
+    border-radius: 12px;
+    background: #f4f7ff;
+    color: #193254;
+}
+#vault-ui h2 { margin-top: 0; color: #193254; }
+#vault-ui p { line-height: 1.65; }
+#vault-ui form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+#vault-ui form > label { display: block; flex: 1 1 260px; min-width: 0; line-height: 1.6; }
+#vault-ui input[type="password"] { display: block; width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #97abc9; border-radius: 6px; }
+#vault-ui input[type="checkbox"] { margin-right: 8px; }
+#vault-ui button { padding: 9px 18px; border: 1px solid #345d9d; border-radius: 6px; background: #345d9d; color: white; min-height: 42px; }
+#vault-ui button:disabled { opacity: .6; }
+#vault-ui [role="status"] { flex-basis: 100%; }
+.credential-fields label > span:not([data-i18n]) { display: block; margin-top: 6px; color: #725116; font-size: .85em; font-weight: normal; line-height: 1.5; }
+@media (max-width: 640px) {
+    #vault-ui { padding: 14px; margin-bottom: 16px; }
+    #vault-ui form > label, #vault-ui form > button { flex-basis: 100%; width: 100%; }
+}

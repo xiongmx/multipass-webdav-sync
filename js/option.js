@@ -1,206 +1,182 @@
+/*global Promise*/
 'use strict';
 
 var Credentials = require('./credentials');
 var CredentialStorage = require('./credential_storage');
+var Vault = require('./vault');
+var VaultUI = require('./vault_ui');
 var Storage = require('./storage');
 var Translator = require('./translator');
 var WebDAVSync = require('./webdav_sync');
+var AuthPolicy = require('./auth_policy');
 
-var OptionPanel = function() {
-    var credentials = [];
-    var file_credentials = [];
+var OptionPanel = (function() {
+    var imported = [];
+    var importOutput, importFile, importText, storageStatus;
+    var importEpoch = 0;
+    var downloadUrls = [];
 
-    var import_output;
-    var import_file_field;
-    var import_json_field;
-    var storage_status;
-
-    function show_storage_error() {
-        if(!storage_status) return;
-        storage_status.textContent = Translator.translate('storage_error') || 'Local storage failed. Your changes may not have been saved.';
-        storage_status.hidden = false;
-        storage_status.className = 'webdav-status error';
+    function showStorageError() {
+        storageStatus.textContent = Vault.isUnlocked() ?
+            'Local storage failed. Your changes may not have been saved.' : 'Unlock the vault before accessing credentials.';
+        storageStatus.hidden = false;
+        storageStatus.className = 'webdav-status error';
     }
-
-    function clear_storage_error() {
-        if(!storage_status) return;
-        storage_status.textContent = '';
-        storage_status.hidden = true;
-        storage_status.className = 'webdav-status';
+    function clearStorageError() {
+        storageStatus.textContent = '';
+        storageStatus.hidden = true;
     }
-
     function modal(title, content, confirmation) {
         var overlay = document.getElementsByClassName('overlay')[0].cloneNode(true);
-
         overlay.removeAttribute('style');
-
-        var buttons = overlay.querySelectorAll('button, .close-button');
-        [].forEach.call(buttons, function (el) {
+        [].forEach.call(overlay.querySelectorAll('button, .close-button'), function(el) {
             el.addEventListener('click', function() {
                 overlay.classList.add('transparent');
-                setTimeout(function () {
-                    overlay.parentNode.removeChild(overlay);
-                }, 1000);
+                setTimeout(function() { if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 1000);
             });
         });
-
         overlay.querySelector('.modal-confirm').addEventListener('click', confirmation);
-
         overlay.querySelector('.overlay-title').textContent = title;
         overlay.querySelector('.overlay-content').textContent = content;
-
-        overlay.addEventListener('click', function () {
-            overlay.querySelector('.page').classList.add('pulse');
-            overlay.querySelector('.page').addEventListener('webkitAnimationEnd', function(e) {
-                e.target.classList.remove('pulse');
-            });
-        });
-
-        overlay.querySelector('.page').addEventListener('click', function(e) {
-            e.stopPropagation();
-        });
-
+        overlay.querySelector('.page').addEventListener('click', function(e) { e.stopPropagation(); });
         document.body.appendChild(overlay);
     }
-
-    function update_output_credentials() {
+    function credentialList(value) {
+        if(Array.isArray(value)) return value;
+        if(value && Array.isArray(value.credentials)) return value.credentials;
+        if(value && value.credentials && typeof value.credentials === 'object') return credentialList(value.credentials);
+        if(value && typeof value === 'object') {
+            var keys = Object.keys(value);
+            if(keys.every(function(key) { return value[key] && typeof value[key].url === 'string'; })) {
+                return keys.map(function(key) { return value[key]; });
+            }
+        }
+        throw new Error('Invalid credential file.');
+    }
+    function renderPreview() {
         var ul = document.createElement('ul');
-
-        var display_credentials = credentials.concat(file_credentials);
-
-        for (var key in display_credentials) {
-            if (Object.prototype.hasOwnProperty.call(display_credentials, key)) {
-                var c = Credentials.sanitize_credential(display_credentials[key]);
-                var item = document.createElement('li');
-                item.textContent = [c.url, ' : ', c.username, ' - ', c.password, ' - ', c.priority].map(function(value) {
-                    return value === null || typeof value === 'undefined' ? '' : String(value);
-                }).join('');
-                ul.appendChild(item);
+        imported.forEach(function(raw) {
+            var c = Credentials.sanitize_credential(raw);
+            var item = document.createElement('li');
+            item.textContent = [c.url, ' : ', c.username, ' - *** - ', c.priority].join('');
+            ul.appendChild(item);
+        });
+        importOutput.replaceChildren(ul);
+    }
+    function rejectedImport() {
+        importOutput.textContent = 'Import rejected. Unlock the vault and use a valid encrypted export/backup with the same passphrase.';
+    }
+    function addPayload(text, epoch) {
+        if(!Vault.isUnlocked() || epoch !== importEpoch) return Promise.reject(new Error('Vault is locked.'));
+        var payload;
+        try { payload = JSON.parse(text); } catch(error) { return Promise.reject(new Error('Invalid JSON.')); }
+        var decoded;
+        if(payload && payload.format === 'multipass-vault-v1' && (payload.kind === 'export' || payload.kind === 'backup')) {
+            decoded = Vault.decrypt(payload, payload.kind);
+        } else {
+            if(!window.confirm('这是旧明文文件。仅在你确认来源可信时导入；导入后将加密保存在保险库中。原文件不会自动删除，请另行清理。继续一次性迁移？')) {
+                return Promise.reject(new Error('Migration cancelled.'));
             }
+            decoded = Promise.resolve(payload);
         }
-
-        import_output.replaceChildren();
-        import_output.appendChild(ul);
+        return decoded.then(function(value) {
+            if(!Vault.isUnlocked() || epoch !== importEpoch) throw new Error('Vault is locked.');
+            imported = imported.concat(credentialList(value));
+            renderPreview();
+        });
     }
-
-    function parse_json(text) {
-        var result = [];
-
-        try {
-            var json = JSON.parse(text);
-
-            for (var key in json) {
-                if (Object.prototype.hasOwnProperty.call(json, key)) {
-                    var c = json[key];
-                    result.push(c);
-                }
-            }
-        } catch (err) {
-            // malformed JSON
-        }
-
-        return result;
-    }
-
-    function readerOnLoadEnd(event) {
-        if (event.target.readyState == FileReader.DONE) {
-            file_credentials = file_credentials.concat(parse_json(event.target.result));
-            update_output_credentials();
-        }
-    }
-
-    function import_file(e) {
-        var files = e.target.files;
-        var len = files.length;
-
-        for (var i = 0; i < len; ++i) {
+    function importFiles(e) {
+        if(!Vault.isUnlocked()) { rejectedImport(); return; }
+        [].forEach.call(e.target.files, function(file) {
+            if(file.size > 5 * 1024 * 1024) { rejectedImport(); return; }
+            var epoch = importEpoch;
             var reader = new FileReader();
-            reader.onloadend = readerOnLoadEnd;
-            reader.readAsText(files[i]);
-        }
+            reader.onload = function(event) { addPayload(event.target.result, epoch).catch(rejectedImport); };
+            reader.onerror = rejectedImport;
+            reader.readAsText(file);
+        });
     }
-
-    function import_json() {
-        credentials = parse_json(import_json_field.value);
-        update_output_credentials();
+    function importJSON() { addPayload(importText.value, importEpoch).catch(rejectedImport); }
+    function clearImport() {
+        importEpoch++;
+        imported = [];
+        importFile.value = '';
+        importText.value = '';
+        importOutput.replaceChildren();
     }
-
-    function import_credentials(e) {
-        var new_credentials = credentials.concat(file_credentials);
-        CredentialStorage.addCredentials(new_credentials).then(function() {
-            credentials = [];
-            file_credentials = [];
-            import_output.replaceChildren();
-            import_file_field.value = '';
-            import_json_field.value = '';
-        }).catch(function() {});
+    function importCredentials(e) {
         e.preventDefault();
+        if(!Vault.isUnlocked()) { rejectedImport(); return; }
+        CredentialStorage.addCredentials(imported).then(clearImport).catch(rejectedImport);
     }
-
-    function restore_test_input() {
-        var lis = document.querySelectorAll('#test-urls li');
-        if(lis.length == 0) {
+    function testRegex() {
+        var regex = document.getElementById('test-regex').value;
+        [].forEach.call(document.querySelectorAll('#test-urls li'), function(el) {
+            el.classList.toggle('matched', AuthPolicy.matchesRule(regex, el.textContent.trim()));
+        });
+    }
+    function restoreTestInput() {
+        if(document.querySelectorAll('#test-urls li').length === 0) {
             var item = document.createElement('li');
             item.textContent = 'https://example.com';
             document.getElementById('test-urls').replaceChildren(item);
         }
-        test_regex();
+        testRegex();
     }
-
-    function test_regex() {
-        var regex = document.getElementById('test-regex').value;
-
-        var lis = document.querySelectorAll('#test-urls li');
-        [].forEach.call(lis, function (el) {
-            var re = new RegExp(regex);
-            var url = el.innerText.trim();
-
-            el.classList.toggle('matched', re.test(url) && url.length > 0);
-        });
+    function releaseDownloads() {
+        downloadUrls.forEach(function(url) { URL.revokeObjectURL(url); });
+        downloadUrls = [];
     }
-
-    function export_credentials(e) {
-        var data = 'text/json;charset=utf-8,' + encodeURIComponent(CredentialStorage.asJSON());
-        e.target.setAttribute('href', 'data:' + data);
+    function exportCredentials(e) {
+        e.preventDefault();
+        if(!Vault.isUnlocked()) { showStorageError(); return; }
+        var epoch = importEpoch;
+        Vault.encrypt(credentialList(JSON.parse(CredentialStorage.asJSON())), 'export').then(function(envelope) {
+            if(!Vault.isUnlocked() || epoch !== importEpoch) return;
+            var url = URL.createObjectURL(new Blob([JSON.stringify(envelope)], { type: 'application/json;charset=utf-8' }));
+            downloadUrls.push(url);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = 'multipass-encrypted-credentials.json';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(function() {
+                URL.revokeObjectURL(url);
+                downloadUrls = downloadUrls.filter(function(active) { return active !== url; });
+            }, 1000);
+        }).catch(showStorageError);
     }
-
-    function clear_credentials(e) {
+    function clearCredentials(e) {
+        e.preventDefault();
         modal(Translator.translate('clear_credentials_modal_title'), Translator.translate('clear_credentials_modal_text'), function(event) {
             event.preventDefault();
-            CredentialStorage.clearAll().catch(function() {});
+            CredentialStorage.clearAll().catch(showStorageError);
         });
-        e.preventDefault();
     }
-
     function init() {
-        import_output = document.querySelector('output.import-list');
-        import_file_field = document.getElementById('import-file');
-        import_json_field = document.getElementById('import-json');
-        storage_status = document.getElementById('storage-status');
-        Storage.onError(show_storage_error);
-        Storage.onSuccess(clear_storage_error);
-
-        import_file_field.addEventListener('change', import_file);
-        import_json_field.addEventListener('change', import_json);
-        document.querySelector('button.import-submit').addEventListener('click', import_credentials);
-
-        document.getElementById('test-urls').addEventListener('blur', restore_test_input);
-        document.getElementById('test-urls').addEventListener('keyup', test_regex);
-        document.getElementById('test-regex').addEventListener('keyup', test_regex);
-
-        document.querySelector('a.export-credentials').addEventListener('click', export_credentials);
-
-        document.querySelector('button.clear-all').addEventListener('click', clear_credentials);
-
-        document.getElementsByClassName('multipass-version')[0].innerText = chrome.runtime.getManifest()['version'];
+        importOutput = document.querySelector('output.import-list');
+        importFile = document.getElementById('import-file');
+        importText = document.getElementById('import-json');
+        storageStatus = document.getElementById('storage-status');
+        Storage.onError(showStorageError);
+        Storage.onSuccess(clearStorageError);
+        importFile.addEventListener('change', importFiles);
+        importText.addEventListener('change', importJSON);
+        document.querySelector('button.import-submit').addEventListener('click', importCredentials);
+        document.getElementById('test-urls').addEventListener('blur', restoreTestInput);
+        document.getElementById('test-urls').addEventListener('keyup', testRegex);
+        document.getElementById('test-regex').addEventListener('keyup', testRegex);
+        document.querySelector('a.export-credentials').addEventListener('click', exportCredentials);
+        document.querySelector('button.clear-all').addEventListener('click', clearCredentials);
+        document.getElementsByClassName('multipass-version')[0].textContent = chrome.runtime.getManifest().version;
+        Vault.onLock(function() { clearImport(); releaseDownloads(); });
     }
+    return { init: init };
+}());
 
-    return {
-        'init': init
-    };
-}();
-
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
+    VaultUI.init();
     OptionPanel.init();
     Credentials.init();
     WebDAVSync.init(CredentialStorage);

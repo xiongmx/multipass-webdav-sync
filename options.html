@@ -28,7 +28,8 @@
             <form id="credential-form" class="credential-form">
                 <div class="credential-fields">
                     <label for="url"><span data-i18n="url_regexp">Url (regexp)</span>
-                        <input type="text" name="url" id="url" required="required">
+                        <input type="text" name="url" id="url" value="^https://" required="required">
+                        <span>网站认证只允许 HTTPS；HTTP（包括 localhost）不会认证。既有 HTTP 规则会保留，但不生效。</span>
                     </label>
                     <label for="username"><span data-i18n="username">Username</span>
                         <input type="text" name="username" id="username" required="required">
@@ -48,7 +49,7 @@
 
             <p id="storage-status" class="webdav-status" role="status" aria-live="polite" hidden></p>
 
-            <p class="webdav-warning">Use credential rules only for trusted HTTPS sites. HTTP Basic credentials are not encrypted when sent over HTTP.</p>
+            <p class="webdav-warning">Website Basic authentication is HTTPS-only. HTTP challenges, including localhost, proxy authentication and non-Basic challenges never receive credentials. Use precise rules for trusted HTTPS origins.</p>
 
             <h2 data-i18n="test_section">Test your regex</h2>
 
@@ -59,7 +60,7 @@
                             <label for="test-regex" data-i18n="tested_regex_label">Your regex: </label>
                         </td>
                         <td>
-                            <input type="text" name="test-regex" id="test-regex">
+                            <input type="text" name="test-regex" id="test-regex" value="^https://">
                         </td>
                     </tr>
                     <tr>
@@ -77,7 +78,7 @@
 
             <h2 data-i18n="import_section">Import</h2>
 
-            <p data-i18n="import_description">You can import credentials into the extension. The file format is the following:</p>
+            <p>Import encrypted exports or backups using the same Vault passphrase. The legacy plaintext example below is for one-time migration only and requires confirmation. Imported entries are encrypted before local persistence; delete old plaintext copies separately.</p>
             <pre>
 [
     {"url":"^https://example\\.com/", "username":"YOUR_USERNAME", "password":"YOUR_PASSWORD", "priority":"1"}
@@ -120,11 +121,12 @@
 
             <h2 data-i18n="export_section">Export</h2>
 
-            <p><a href="#" download="multipass-credentials.json" class="export-credentials" data-i18n="export_button">Download credentials as JSON file.</a></p>
+            <p><a href="#" download="multipass-encrypted-credentials.json" class="export-credentials">Download encrypted credentials. The same Vault passphrase is required to restore them.</a></p>
 
             <h2>Custom WebDAV sync</h2>
 
-            <p>WebDAV sync uses your endpoint account over HTTPS. The credentials file on the WebDAV server is plaintext, so the server operator can read it. Endpoint credentials are saved only in this browser profile’s local extension storage.</p>
+            <p>WebDAV sync uses your endpoint account over HTTPS. The sync document and local WebDAV state are encrypted with the extension Vault (AES-GCM-256, PBKDF2-SHA256, 600,000 iterations). The original Vault passphrase is never stored.</p>
+            <p><strong>Data use and third-party disclosure:</strong> when you sync, this extension sends the configured WebDAV username/password and encrypted sync ciphertext to the third-party WebDAV endpoint you enter. The endpoint operator can still see the account, URL, timing, ciphertext size and ETag, but cannot read the sync document without the Vault material. Basic authentication credentials remain visible to the WebDAV service as the transport account. Sync requires an unlocked Vault; locking stops alarms and cancels in-flight requests.</p>
             <p>Example: <code>https://webdav.example.net/dav/multipass-sync.json</code></p>
             <table class="form-table webdav-table">
                 <tr>
@@ -155,6 +157,7 @@
                     </td>
                 </tr>
             </table>
+            <p><label><input type="checkbox" id="webdav-consent"> I understand the data use, third-party recipient, encrypted ciphertext storage and visible WebDAV account metadata, and explicitly authorize WebDAV sync on this device.</label></p>
             <p class="webdav-actions">
                 <button type="button" id="webdav-save">Save settings on this device</button>
                 <button type="button" id="webdav-sync">Sync now</button>
@@ -164,15 +167,18 @@
                 <button type="button" id="webdav-push">Push local (replace remote)</button>
                 <button type="button" id="webdav-backup" disabled="disabled">Download latest local backup</button>
             </p>
+            <p class="webdav-actions"><button type="button" id="webdav-revoke">Revoke WebDAV sync authorization</button></p>
             <p id="webdav-status" class="webdav-status" role="status" aria-live="polite">Configure a WebDAV file URL to begin.</p>
-            <p class="webdav-warning">Use HTTPS. HTTP is allowed only for localhost testing and is unencrypted. The file stored on WebDAV contains usernames and passwords in plaintext; HTTPS protects them in transit but not from the WebDAV server or its administrators. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval. Local browser storage is not a password vault.</p>
+            <p class="webdav-warning">All product WebDAV endpoints must use HTTPS, including localhost, 127.0.0.1 and [::1]. WebDAV stores an encrypted sync envelope; the server still sees Basic account credentials and request metadata. Legacy plaintext remote files are refused by automatic sync and are never silently overwritten; download a backup first, then use explicit Push local migration only after review. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval.</p>
 
             <h2 data-i18n="clear_section">Clear all credentials</h2>
 
             <button class="clear-all" data-i18n="clear_button">Clear all credentials</button>
+            <p><button type="button" id="clear-all-sensitive">Clear all sensitive data on this device</button></p>
+            <p class="webdav-warning">This local-clear action requires confirmation and removes local credentials, temporary credential form data, WebDAV account/settings, sync metadata, backups, and automatic-sync status. It does not delete remote WebDAV files or files already downloaded to your computer; delete those separately.</p>
 
             <div class="footer">
-                <p>MultiPass - &copy; <a href="mailto:gilles@crettenand.info">Gilles Crettenand</a> - <span class="multipass-version"></span></p>
+                <p>Unofficial WebDAV Sync fork - <span class="multipass-version"></span>. Based on MultiPass by Gilles Crettenand (original author, not this fork's support contact).</p>
                 <p><a href="https://www.wtfpl.net/">WTFPL license</a></p>
             </div>
         </main>

@@ -1,10 +1,13 @@
 {
   "name": "MultiPass",
-  "description": "Automatically login to Basic Authentication using data based on URL regexp.",
-  "author": "Gilles Crettenand <gilles@crettenand.info>",
+  "private": true,
+  "description": "HTTPS-only Basic authentication with an encrypted vault and encrypted WebDAV sync.",
+  "contributors": [
+    "Gilles Crettenand (original upstream author)"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/krtek4/MultiPass.git"
+    "url": "https://github.com/xiongmx/multipass-webdav-sync.git"
   },
   "license": "WTFPL",
   "scripts": {
@@ -13,7 +16,8 @@
     "build:firefox-android": "gulp build-firefox-android",
     "dist": "gulp dist",
     "dist:firefox-android": "gulp dist-firefox-android",
-    "test": "node test/storage.test.js && node test/webdav_sync.test.js",
+    "test": "node test/storage.test.js && node test/vault.test.js && node test/vault_ui.test.js && node test/auth_https.test.js && node test/credential_safety.test.js && node test/credential_concurrency.test.js && node test/options_crypto.test.js && node test/webdav_sync.test.js",
+    "test:packages": "node test/package_https.test.js",
     "test:webdav-e2e": "node test/webdav_e2e.test.js"
   },
   "devDependencies": {

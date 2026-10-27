@@ -1,160 +1,109 @@
 /*global Promise*/
 'use strict';
 
-module.exports = function() {
+var Vault = require('./vault');
+module.exports = (function() {
     var storage = chrome.storage;
-    if(!storage || !storage.local) {
-        throw new Error('Local extension storage is unavailable.');
-    }
-
-    // Credential data deliberately stays in this browser profile. Cross-device
-    // transfer is available only through the user-initiated encrypted WebDAV flow.
-    var dataStore = storage.local;
+    if(!storage || !storage.local) throw new Error('Local extension storage is unavailable.');
     var listenerCallbacks = Object.create(null);
     var errorCallbacks = [];
     var successCallbacks = [];
+    var queues = Object.create(null);
     var changeListenerInstalled = false;
     var lastStorageError = null;
-
-    function hasOwn(object, key) {
-        return Object.prototype.hasOwnProperty.call(object, key);
-    }
+    var CONFIG_KEY = Vault.constants.configKey;
+    var LEGACY_VALUES_KEY = Vault.constants.encryptedValuesKey;
 
     function reportError(error) {
         lastStorageError = error;
-        errorCallbacks.slice().forEach(function(callback) {
-            try {
-                callback(error);
-            } catch(e) {
-                // Error reporting must not interrupt other storage listeners.
-            }
-        });
+        errorCallbacks.slice().forEach(function(callback) { try { callback(error); } catch (e) { /* observer failure is isolated */ } });
     }
-
-    function lastError() {
-        var error = chrome.runtime && chrome.runtime.lastError;
-        return error ? new Error(error.message || String(error)) : null;
-    }
-
     function reportSuccess() {
         lastStorageError = null;
-        successCallbacks.slice().forEach(function(callback) {
-            try {
-                callback();
-            } catch(e) {
-                // Status reporting must not interrupt a completed storage write.
-            }
-        });
+        successCallbacks.slice().forEach(function(callback) { try { callback(); } catch (e) { /* observer failure is isolated */ } });
     }
-
-    function getAsync(key, defaultValue) {
-        return new Promise(function(resolve, reject) {
-            dataStore.get(key, function(result) {
-                var error = lastError();
-                if(error) {
-                    reject(error);
-                    return;
-                }
-                if(result && hasOwn(result, key)) resolve(result[key]);
-                else resolve(defaultValue);
-            });
-        }).catch(function(error) {
-            reportError(error);
-            throw error;
-        });
+    function getAsync(key, fallback) {
+        return Vault.getAsync(key, fallback).catch(function(error) { reportError(error); throw error; });
     }
-
-    function get(key, callback, defaultValue) {
-        var operation = getAsync(key, defaultValue);
-        if(typeof callback !== 'function') return operation;
-        return operation.then(function(value) {
-            callback(value);
-            return value;
-        });
+    function get(key, callback, fallback) {
+        var promise = getAsync(key, fallback);
+        if(typeof callback !== 'function') return promise;
+        return promise.then(function(value) { callback(value); return value; });
     }
-
     function setAsync(key, value) {
-        var data = {};
-        data[key] = value;
-        return new Promise(function(resolve, reject) {
-            dataStore.set(data, function() {
-                var error = lastError();
-                if(error) reject(error);
-                else {
-                    reportSuccess();
-                    resolve();
-                }
-            });
-        }).catch(function(error) {
-            reportError(error);
-            throw error;
-        });
+        return Vault.setAsync(key, value).then(function(result) { reportSuccess(); return result; })
+            .catch(function(error) { reportError(error); throw error; });
     }
-
-    function set(key, value) {
-        return setAsync(key, value);
+    function updateAsync(key, fallback, updater) {
+        return Vault.updateAsync(key, fallback, updater).then(function(result) { reportSuccess(); return result; })
+            .catch(function(error) { reportError(error); throw error; });
     }
-
+    function set(key, value) { return setAsync(key, value); }
+    function deliver(key, value) {
+        var callbacks = listenerCallbacks[key];
+        if(!callbacks) return;
+        callbacks.slice().forEach(function(callback) { try { callback(value); } catch (e) { reportError(e); } });
+    }
+    function queueDeliver(key, work) {
+        queues[key] = (queues[key] || Promise.resolve()).then(work, work).catch(function(error) { reportError(error); });
+    }
     function dispatchChanges(changes, namespace) {
         if(namespace !== 'local' || !changes) return;
         Object.keys(changes).forEach(function(key) {
-            var callbacks = listenerCallbacks[key];
-            if(!callbacks) return;
-            callbacks.slice().forEach(function(callback) {
-                try {
-                    callback(changes[key].newValue);
-                } catch(error) {
-                    reportError(error);
-                }
+            if(key === CONFIG_KEY || key === LEGACY_VALUES_KEY || key === Vault.constants.revocationKey) return;
+            queueDeliver(key, function() {
+                var envelope = changes[key].newValue;
+                if(envelope === undefined) { deliver(key, undefined); return Promise.resolve(); }
+                return Vault.decrypt(envelope, 'local:' + key).then(function(value) { deliver(key, value); });
             });
         });
     }
-
-    function register(key, callback) {
-        if(typeof callback !== 'function') throw new TypeError('A storage change callback is required.');
-        if(!listenerCallbacks[key]) listenerCallbacks[key] = [];
-        listenerCallbacks[key].push(callback);
-
+    function reload(key) {
+        return Vault.getAsync(key).then(function(value) { deliver(key, value); }, function(error) {
+            if(error && error.message === 'Vault is locked.') return;
+            reportError(error);
+        });
+    }
+    function installListener() {
         if(!changeListenerInstalled && storage.onChanged && typeof storage.onChanged.addListener === 'function') {
             storage.onChanged.addListener(dispatchChanges);
             changeListenerInstalled = true;
         }
-
+    }
+    function register(key, callback) {
+        var list;
+        if(typeof callback !== 'function') throw new TypeError('A storage change callback is required.');
+        list = listenerCallbacks[key] || (listenerCallbacks[key] = []);
+        list.push(callback);
+        installListener();
         return function() {
-            var callbacks = listenerCallbacks[key];
-            if(!callbacks) return;
-            var index = callbacks.indexOf(callback);
-            if(index !== -1) callbacks.splice(index, 1);
-            if(callbacks.length === 0) delete listenerCallbacks[key];
+            var current = listenerCallbacks[key], index;
+            if(!current) return;
+            index = current.indexOf(callback);
+            if(index !== -1) current.splice(index, 1);
+            if(!current.length) delete listenerCallbacks[key];
         };
     }
-
     function onError(callback) {
         if(typeof callback !== 'function') throw new TypeError('A storage error callback is required.');
         errorCallbacks.push(callback);
         if(lastStorageError) callback(lastStorageError);
-        return function() {
-            var index = errorCallbacks.indexOf(callback);
-            if(index !== -1) errorCallbacks.splice(index, 1);
-        };
+        return function() { var i = errorCallbacks.indexOf(callback); if(i !== -1) errorCallbacks.splice(i, 1); };
     }
-
     function onSuccess(callback) {
         if(typeof callback !== 'function') throw new TypeError('A storage success callback is required.');
         successCallbacks.push(callback);
-        return function() {
-            var index = successCallbacks.indexOf(callback);
-            if(index !== -1) successCallbacks.splice(index, 1);
-        };
+        return function() { var i = successCallbacks.indexOf(callback); if(i !== -1) successCallbacks.splice(i, 1); };
     }
-
-    return {
-        'get': get,
-        'getAsync': getAsync,
-        'set': set,
-        'setAsync': setAsync,
-        'register': register,
-        'onError': onError,
-        'onSuccess': onSuccess
-    };
-}();
+    Vault.onLock(function() {
+        Object.keys(listenerCallbacks).forEach(function(key) {
+            queueDeliver(key, function() { deliver(key, undefined); return Promise.resolve(); });
+        });
+    });
+    Vault.onUnlock(function() {
+        Object.keys(listenerCallbacks).forEach(function(key) { queueDeliver(key, function() { return reload(key); }); });
+    });
+    installListener();
+    return { get: get, getAsync: getAsync, set: set, setAsync: setAsync,
+        updateAsync: updateAsync, removeAsync: Vault.removeAsync, register: register, onError: onError, onSuccess: onSuccess };
+}());

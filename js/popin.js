@@ -1,6 +1,8 @@
 'use strict';
 
 var Credentials = require('./credentials');
+var AuthPolicy = require('./auth_policy');
+var VaultUI = require('./vault_ui');
 
 var Popin = function() {
     var only_match = 'only-match';
@@ -25,8 +27,7 @@ var Popin = function() {
         var matches = [];
         var urls = container.getElementsByClassName('url');
         [].forEach.call(urls, function (el) {
-            var re = new RegExp(el.innerText);
-            if (re.test(tab.url)) {
+            if (AuthPolicy.matchesRule(el.innerText, tab.url)) {
                 matches.push(el.parentNode);
             }
         });
@@ -59,6 +60,7 @@ var Popin = function() {
 }();
 
 document.addEventListener('DOMContentLoaded', function () {
+    VaultUI.init();
     Popin.init();
     Credentials.init();
 });

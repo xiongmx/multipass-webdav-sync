@@ -1,247 +1,62 @@
 'use strict';
-
 var CredentialStorage = require('./credential_storage');
 var Storage = require('./storage');
+var Vault = require('./vault');
 var Translator = require('./translator');
-
+var AuthPolicy = require('./auth_policy');
 module.exports = function() {
-    var password_stars_class = 'password-stars';
-    var password_real_class = 'password-real';
-
-    var storage_key = 'temporary-credentials';
-
-    function sanitize_credential(credential) {
-        var fields = ['url', 'username', 'password', 'priority'];
-        var result = {};
-
-        for(var f in fields) {
-            if (Object.prototype.hasOwnProperty.call(fields, f) && Object.prototype.hasOwnProperty.call(credential, fields[f])) {
-                result[fields[f]] = credential[fields[f]];
-            }
-        }
-
-        return result;
-    }
-
-    function display_credentials(credentials) {
-        var container = document.getElementsByClassName('credentials')[0];
-        container.replaceChildren();
-
-        credentials = Object.keys(credentials).map(function(e) {
-            return credentials[e];
+    var stars = 'password-stars', real = 'password-real', temporary = 'temporary-credentials', unloading = false;
+    function sanitize_credential(c) { var r = {}; ['url', 'username', 'password', 'priority'].forEach(function(k) { if(c && Object.prototype.hasOwnProperty.call(c, k)) r[k] = c[k]; }); return r; }
+    function display_credentials(value) {
+        var container = document.getElementsByClassName('credentials')[0]; if(!container) return; container.replaceChildren();
+        var list = Object.keys(value || {}).map(function(k) { return value[k]; }).sort(CredentialStorage.sortCredentials);
+        list.forEach(function(raw) {
+            var c = sanitize_credential(raw), url = typeof c.url === 'string' ? c.url : '', username = typeof c.username === 'string' ? c.username : '';
+            var row = document.createElement('tr'), urlCell = document.createElement('td'); urlCell.className = 'url'; urlCell.title = url; urlCell.textContent = url; row.appendChild(urlCell);
+            var usernameCell = document.createElement('td'); usernameCell.className = 'username'; usernameCell.title = username; usernameCell.textContent = username; row.appendChild(usernameCell);
+            var passwordCell = document.createElement('td'); passwordCell.className = 'password'; passwordCell.setAttribute('data-url', url);
+            var passwordStars = document.createElement('span'); passwordStars.className = stars; passwordStars.textContent = '***'; passwordCell.appendChild(passwordStars);
+            var passwordReal = document.createElement('span'); passwordReal.className = real; passwordReal.textContent = ''; passwordReal.style.display = 'none'; passwordCell.appendChild(passwordReal);
+            var show = document.createElement('button'); show.type = 'button'; show.className = 'show-password'; show.textContent = Translator.translate('show_hide_password'); passwordCell.appendChild(show); row.appendChild(passwordCell);
+            var priorityCell = document.createElement('td'); priorityCell.className = 'priority'; priorityCell.textContent = String(c.priority === undefined ? 1 : c.priority); row.appendChild(priorityCell);
+            var action = document.createElement('td'); action.className = 'action';
+            var remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove'; remove.setAttribute('data-url', url); remove.textContent = Translator.translate('remove_credential'); action.appendChild(remove);
+            var edit = document.createElement('button'); edit.type = 'button'; edit.className = 'edit'; edit.setAttribute('data-url', url); edit.textContent = Translator.translate('edit_credential'); action.appendChild(edit); row.appendChild(action); container.appendChild(row);
         });
-        credentials.sort(CredentialStorage.sortCredentials);
-
-        for (var key in credentials) {
-            if (Object.prototype.hasOwnProperty.call(credentials, key)) {
-                var c = sanitize_credential(credentials[key]);
-                var url = typeof c.url === 'string' ? c.url : '';
-                var username = typeof c.username === 'string' ? c.username : '';
-                var password = typeof c.password === 'string' ? c.password : '';
-                var row = document.createElement('tr');
-                var urlCell = document.createElement('td');
-                urlCell.className = 'url';
-                urlCell.title = url;
-                var urlLabel = document.createElement('span');
-                urlLabel.className = 'mobile-field-label';
-                urlLabel.textContent = Translator.translate('url_regexp');
-                urlCell.appendChild(urlLabel);
-                urlCell.appendChild(document.createTextNode(url));
-                row.appendChild(urlCell);
-
-                var usernameCell = document.createElement('td');
-                usernameCell.className = 'username';
-                usernameCell.title = username;
-                var usernameLabel = document.createElement('span');
-                usernameLabel.className = 'mobile-field-label';
-                usernameLabel.textContent = Translator.translate('username');
-                usernameCell.appendChild(usernameLabel);
-                usernameCell.appendChild(document.createTextNode(username));
-                row.appendChild(usernameCell);
-
-                var passwordCell = document.createElement('td');
-                passwordCell.className = 'password';
-                var passwordLabel = document.createElement('span');
-                passwordLabel.className = 'mobile-field-label';
-                passwordLabel.textContent = Translator.translate('password');
-                passwordCell.appendChild(passwordLabel);
-                var passwordStars = document.createElement('span');
-                passwordStars.className = password_stars_class;
-                passwordStars.textContent = '***';
-                passwordCell.appendChild(passwordStars);
-                var passwordReal = document.createElement('span');
-                passwordReal.className = password_real_class;
-                passwordReal.textContent = password;
-                passwordCell.appendChild(passwordReal);
-                var showPassword = document.createElement('button');
-                showPassword.type = 'button';
-                showPassword.className = 'show-password';
-                showPassword.textContent = Translator.translate('show_hide_password');
-                passwordCell.appendChild(showPassword);
-                row.appendChild(passwordCell);
-
-                var priorityCell = document.createElement('td');
-                priorityCell.className = 'priority';
-                var priorityLabel = document.createElement('span');
-                priorityLabel.className = 'mobile-field-label';
-                priorityLabel.textContent = Translator.translate('priority');
-                priorityCell.appendChild(priorityLabel);
-                priorityCell.appendChild(document.createTextNode(String(c.priority || 1)));
-                row.appendChild(priorityCell);
-
-                var actionCell = document.createElement('td');
-                actionCell.className = 'action';
-                var removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.className = 'remove';
-                removeButton.setAttribute('data-url', url);
-                removeButton.textContent = Translator.translate('remove_credential');
-                actionCell.appendChild(removeButton);
-                var editButton = document.createElement('button');
-                editButton.type = 'button';
-                editButton.className = 'edit';
-                editButton.setAttribute('data-url', url);
-                editButton.textContent = Translator.translate('edit_credential');
-                actionCell.appendChild(editButton);
-                row.appendChild(actionCell);
-
-                container.appendChild(row);
-            }
-        }
     }
-
-    function togglePassword(e) {
-        var password = e.target.parentNode;
-        var star = password.getElementsByClassName(password_stars_class)[0];
-        var real = password.getElementsByClassName(password_real_class)[0];
-
-        var password_shown = star.style.display == 'none';
-        star.style.display = password_shown ? 'inline' : 'none';
-        real.style.display = password_shown ? 'none' : 'inline';
-    }
-
-    function submit(e) {
-        e.preventDefault();
-
-        var url = document.getElementById('url');
-        var username = document.getElementById('username');
-        var password = document.getElementById('password');
-        var priority = document.getElementById('priority');
-
-        var values = {
-            url: url.value,
-            username: username.value,
-            password: password.value,
-            priority: priority.value
-        };
-
-        var valid = true;
-        for (var key in values) {
-            if (Object.prototype.hasOwnProperty.call(values, key)) {
-                var v = values[key];
-
-                if(v === '') {
-                    valid = false;
-                }
-            }
-        }
-
-        if(valid) {
-            var old = document.querySelector('tr.editing .url');
-            var oldUrl = old && old.innerText.length > 0 ? old.innerText : undefined;
-            CredentialStorage.saveCredential(values, oldUrl).then(function() {
-                url.value = '';
-                username.value = '';
-                password.value = '';
-                priority.value = 1;
-                reset_form();
-            }).catch(function() {});
-        }
-    }
-
-    function remove(e) {
-        var url = e.target.getAttribute('data-url');
-        CredentialStorage.removeCredential(url).catch(function() {});
-    }
-
-    function edit(e) {
+    function clearSensitiveForm() {
+        ['url', 'username', 'password', 'priority'].forEach(function(id) { var el = document.getElementById(id); if(el) el.value = id === 'url' ? AuthPolicy.DEFAULT_RULE : id === 'priority' ? 1 : ''; });
+        [].forEach.call(document.getElementsByClassName(real), function(el) { el.textContent = ''; el.style.display = 'none'; });
+        [].forEach.call(document.getElementsByClassName(stars), function(el) { el.style.display = 'inline'; });
         reset_form();
-
-        var url = document.getElementById('url');
-        var username = document.getElementById('username');
-        var password = document.getElementById('password');
-        var priority = document.getElementById('priority');
-
-        var tr = e.target.closest('tr');
-
-        tr.classList.add('editing');
-
-        url.value = tr.getElementsByClassName('url')[0].textContent;
-        username.value = tr.getElementsByClassName('username')[0].textContent;
-        password.value = tr.getElementsByClassName('password-real')[0].textContent;
-        priority.value = tr.getElementsByClassName('priority')[0].textContent;
-
-        document.getElementsByClassName('credential-form-submit')[0].textContent = Translator.translate('edit_credential');
     }
-
-    function reset_form() {
-        var el = document.querySelector('tr.editing');
-        if(el) el.classList.remove('editing');
-
-        document.getElementsByClassName('credential-form-submit')[0].textContent = Translator.translate('add_credential');
+    function togglePassword(e) {
+        if(!Vault.isUnlocked()) return;
+        var cell = e.target.parentNode, star = cell.getElementsByClassName(stars)[0], shown = cell.getElementsByClassName(real)[0];
+        if(shown.style.display !== 'none') { shown.textContent = ''; shown.style.display = 'none'; star.style.display = 'inline'; return; }
+        var c = CredentialStorage.getCredential(cell.getAttribute('data-url')); if(!c) return;
+        shown.textContent = c.password; shown.style.display = 'inline'; star.style.display = 'none';
     }
-
+    function submit(e) {
+        e.preventDefault(); if(!Vault.isUnlocked()) { clearSensitiveForm(); return; }
+        var url = document.getElementById('url'), username = document.getElementById('username'), password = document.getElementById('password'), priority = document.getElementById('priority');
+        if(url.value === AuthPolicy.DEFAULT_RULE) { if(typeof window !== 'undefined' && window.alert) window.alert('Choose a narrower HTTPS rule; the default ^https:// rule is not submitted.'); return; }
+        var values = { url: url.value, username: username.value, password: password.value, priority: priority.value }; if(!values.url) return;
+        var old = document.querySelector('tr.editing .url'), oldUrl = old && old.textContent ? old.textContent : undefined;
+        CredentialStorage.saveCredential(values, oldUrl).then(function() { clearSensitiveForm(); }).catch(function() {});
+    }
+    function remove(e) { if(Vault.isUnlocked()) CredentialStorage.removeCredential(e.target.getAttribute('data-url')).catch(function() {}); }
+    function edit(e) {
+        if(!Vault.isUnlocked()) return; reset_form(); var target = e.target, rule = target.getAttribute('data-url'), c = CredentialStorage.getCredential(rule); if(!c) return;
+        var row = target.closest('tr'); row.classList.add('editing'); document.getElementById('url').value = c.url; document.getElementById('username').value = c.username; document.getElementById('password').value = c.password; document.getElementById('priority').value = c.priority; document.getElementsByClassName('credential-form-submit')[0].textContent = Translator.translate('edit_credential');
+    }
+    function reset_form() { var editing = document.querySelector('tr.editing'); if(editing) editing.classList.remove('editing'); var url = document.getElementById('url'); if(url && Vault.isUnlocked()) url.value = AuthPolicy.DEFAULT_RULE; var submitButton = document.getElementsByClassName('credential-form-submit')[0]; if(submitButton) submitButton.textContent = Translator.translate('add_credential'); }
+    function restoreTemporary() { if(!Vault.isUnlocked()) return; Storage.getAsync(temporary, {}).then(function(result) { result = result && typeof result === 'object' ? result : {}; var url = document.getElementById('url'); if(url) url.value = result.url || AuthPolicy.DEFAULT_RULE; document.getElementById('username').value = typeof result.username === 'string' ? result.username : ''; document.getElementById('password').value = typeof result.password === 'string' ? result.password : ''; document.getElementById('priority').value = result.priority || 1; return Storage.setAsync(temporary, {}); }).catch(function() {}); }
     function init() {
-        CredentialStorage.register(display_credentials);
-
-        document.getElementById('credential-form').addEventListener('submit', submit);
-
-        document.addEventListener('click', function(e) {
-            if(e.target.matches('.credential-form-reset')) {
-                e.stopPropagation();
-                reset_form(e);
-            }
-            if(e.target.matches('.remove')) {
-                e.stopPropagation();
-                remove(e);
-            }
-            if(e.target.matches('.edit')) {
-                e.stopPropagation();
-                edit(e);
-            }
-            if(e.target.matches('.show-password')) {
-                e.stopPropagation();
-                togglePassword(e);
-            }
-        });
-
-        Storage.getAsync(storage_key, {}).then(function(result) {
-            result = result && typeof result === 'object' ? result : {};
-            document.getElementById('url').value = result.url || '';
-            document.getElementById('username').value = result.username || '';
-            document.getElementById('password').value = result.password || '';
-            document.getElementById('priority').value = result.priority || 1;
-            return Storage.setAsync(storage_key, {});
-        }).catch(function() {});
-
-        addEventListener('unload', function () {
-            var url = document.getElementById('url').value;
-            var username = document.getElementById('username').value;
-            var password = document.getElementById('password').value;
-            var priority = document.getElementById('priority').value;
-
-            var values = {
-                url: url,
-                username: username,
-                password: password,
-                priority: priority
-            };
-            Storage.setAsync(storage_key, values).catch(function() {});
-        });
+        CredentialStorage.register(display_credentials); var form = document.getElementById('credential-form'); if(form) form.addEventListener('submit', submit);
+        document.addEventListener('click', function(e) { if(e.target.matches('.credential-form-reset')) { e.stopPropagation(); clearSensitiveForm(); } if(e.target.matches('.remove')) { e.stopPropagation(); remove(e); } if(e.target.matches('.edit')) { e.stopPropagation(); edit(e); } if(e.target.matches('.show-password')) { e.stopPropagation(); togglePassword(e); } });
+        restoreTemporary(); if(typeof Vault.onLock === 'function') Vault.onLock(function() { unloading = true; clearSensitiveForm(); }); if(typeof Vault.onUnlock === 'function') Vault.onUnlock(function() { unloading = false; restoreTemporary(); });
+        addEventListener('unload', function() { if(unloading || !Vault.isUnlocked()) return; Storage.setAsync(temporary, { url: document.getElementById('url').value, username: document.getElementById('username').value, password: document.getElementById('password').value, priority: document.getElementById('priority').value }).catch(function() {}); });
     }
-
-    return {
-        'init': init,
-        'sanitize_credential': sanitize_credential
-    };
+    return { init: init, sanitize_credential: sanitize_credential };
 }();

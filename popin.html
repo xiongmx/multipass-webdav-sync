@@ -26,7 +26,8 @@
                     <tr>
                         <td class="url">
                             <label for="url" data-i18n="url">Url</label>
-                            <input type="text" name="url" id="url" required="true">
+                            <input type="text" name="url" id="url" value="^https://" required="true">
+                            <span>网站认证只允许 HTTPS；HTTP（包括 localhost）不会认证。既有 HTTP 规则会保留，但不生效。</span>
                         </td>
                         <td class="username">
                             <label for="username" data-i18n="username">Username</label>

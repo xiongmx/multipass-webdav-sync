@@ -2,6 +2,20 @@
 
 var assert = require('assert');
 if(!globalThis.crypto) globalThis.crypto = require('crypto').webcrypto;
+
+var refuseSecretUse = false;
+var testVault = {
+    isUnlocked: function() { return true; },
+    verifyUnlocked: function() { return refuseSecretUse ? Promise.reject(new Error('Vault is locked.')) : Promise.resolve(); },
+    encrypt: function(value, kind) {
+        return Promise.resolve({ format: 'multipass-vault-v1', kind: kind, parameters: { cipher: 'AES-GCM-256', kdf: 'PBKDF2-SHA256', iterations: 600000, saltBytes: 16, ivBytes: 12 }, salt: 'AAAAAAAAAAAAAAAAAAAAAA==', iv: 'AAAAAAAAAAAAAAAA', ciphertext: Buffer.from(JSON.stringify(value), 'utf8').toString('base64') });
+    },
+    decrypt: function(envelope) { return Promise.resolve(JSON.parse(Buffer.from(envelope.ciphertext, 'base64').toString('utf8'))); },
+    getAsync: function(key, fallback) { return Promise.resolve(fallback); },
+    setAsync: function() { return Promise.resolve(); },
+    removeAsync: function() { return Promise.resolve(); }
+};
+require.cache[require.resolve('../js/vault')] = { id: require.resolve('../js/vault'), filename: require.resolve('../js/vault'), loaded: true, exports: testVault };
 var Sync = require('../js/webdav_sync');
 
 function rejects(promise, message) {
@@ -15,11 +29,24 @@ function rejects(promise, message) {
 
 async function main() {
     assert.strictEqual(Sync.validateEndpoint('https://webdav.example.net/dav/multipass-sync.json'), 'https://webdav.example.net/dav/multipass-sync.json');
-    assert.strictEqual(Sync.validateEndpoint('http://localhost:8080/multipass-sync.json'), 'http://localhost:8080/multipass-sync.json');
-    assert.throws(function() { Sync.validateEndpoint('http://webdav.example.net/sync.json'); }, /HTTPS is required/);
+    ['http://localhost:8080/multipass-sync.json', 'http://127.0.0.1:8080/multipass-sync.json', 'http://[::1]:8080/multipass-sync.json', 'http://webdav.example.net/sync.json'].forEach(function(endpoint) {
+        assert.throws(function() { Sync.validateEndpoint(endpoint); }, /HTTPS is required/);
+    });
     assert.throws(function() { Sync.validateEndpoint('https://user:secret@webdav.example.net/sync.json'); }, /separate fields/);
     assert.throws(function() { Sync.validateEndpoint('https://webdav.example.net/sync.json?token=secret'); }, /URL query/);
     assert.throws(function() { Sync.validateEndpoint('https://webdav.example.net/sync.json#fragment'); }, /fragment/);
+
+    var rejectedFetches = 0;
+    var savedFetch = global.fetch;
+    global.fetch = function() { rejectedFetches++; return Promise.reject(new Error('HTTP must not reach fetch')); };
+    await rejects(Sync.readRemote({ endpoint: 'http://localhost/loopback', username: '', password: '' }), 'HTTPS is required');
+    await rejects(Sync.putRemote({ endpoint: 'http://127.0.0.1/loopback', username: '', password: '' }, { format: 'fixture' }, ''), 'HTTPS is required');
+    assert.strictEqual(rejectedFetches, 0, 'direct runtime calls must reject HTTP before fetch');
+    refuseSecretUse = true;
+    await rejects(Sync.readRemote({ endpoint: 'https://example.test/revoked', username: 'dummy', password: 'dummy' }), 'Vault is locked');
+    assert.strictEqual(rejectedFetches, 0, 'durable revocation must block fetch even while a stale cached isUnlocked flag is true');
+    refuseSecretUse = false;
+    global.fetch = savedFetch;
 
     var common = {
         remoteExists: true,
@@ -60,10 +87,12 @@ async function main() {
             }
         };
         var document = await Sync.createSyncDocument(source, 100);
-        assert.strictEqual(document.format, 'multipass-webdav-plain-v1');
+    assert.deepStrictEqual(Object.keys(document).sort(), ['credentials','format','revision','schema','updatedAt'].sort(), 'sync documents must contain only the formal schema');
+    await rejects(Sync.parseSyncDocument(Object.assign({}, document, { setVaultForTests: function() {} })), 'unknown fields');
+        assert.strictEqual(document.format, 'multipass-webdav-sync-v2');
         assert.strictEqual(document.schema, 1);
         assert(document.updatedAt > 100);
-        assert(JSON.stringify(document).includes('fixture-only-password'), 'the accepted WebDAV format is plaintext JSON');
+        assert(JSON.stringify(document).includes('fixture-only-password'), 'the internal sync document contains credentials before encryption');
         assert.strictEqual(requestOptions, undefined);
 
         var parsed = await Sync.parseSyncDocument(JSON.parse(JSON.stringify(document)));
@@ -75,7 +104,7 @@ async function main() {
         var tampered = JSON.parse(JSON.stringify(document));
         tampered.credentials['https://admin.example.net/'].password = 'changed';
         await rejects(Sync.parseSyncDocument(tampered), 'revision does not match');
-        await rejects(Sync.parseSyncDocument({ format: 'multipass-webdav-encrypted-v1' }), 'retired encrypted format');
+        await rejects(Sync.parseSyncDocument({ format: 'multipass-webdav-encrypted-v1' }), 'legacy');
         await rejects(Sync.parseSyncDocument(Object.assign({}, document, { extra: true })), 'unknown fields');
         var extraCredentialField = JSON.parse(JSON.stringify(document));
         extraCredentialField.credentials['https://admin.example.net/'].token = 'unexpected';
@@ -89,7 +118,10 @@ async function main() {
         assert.strictEqual(requestOptions.headers['Content-Type'], 'application/json; charset=utf-8');
         assert.strictEqual(Buffer.from(requestOptions.headers.Authorization.slice(6), 'base64').toString('utf8'), 'münchen:dav-pass');
         assert.strictEqual(requestOptions.headers['If-Match'], '"old"');
-        assert.strictEqual(requestOptions.body, JSON.stringify(document));
+        var sentEnvelope = JSON.parse(requestOptions.body);
+        assert.strictEqual(sentEnvelope.format, 'multipass-vault-v1');
+        assert.strictEqual(sentEnvelope.kind, 'sync');
+        assert(!requestOptions.body.includes('fixture-only-password'), 'the server body must not contain the site password in plaintext');
 
         global.fetch = function() {
             return Promise.resolve({ status: 204, ok: true, headers: { get: function() { return null; } } });
@@ -134,43 +166,21 @@ async function main() {
         global.fetch = function() { oversizedWriteFetched = true; return Promise.reject(new Error('should not fetch')); };
         await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, { large: 'x'.repeat(5 * 1024 * 1024) }, ''), '5 MB');
         assert.strictEqual(oversizedWriteFetched, false, 'oversized local snapshots must be rejected before network access');
+
+        global.fetch = function(url, options) {
+            assert(options.signal, 'requests must carry an AbortSignal when supported');
+            return new Promise(function(resolve, reject) { options.signal.addEventListener('abort', function() { var error = new Error('aborted'); error.name = 'AbortError'; reject(error); }); });
+        };
+        var oldTimeout = global.setTimeout;
+        global.setTimeout = function(fn) { return oldTimeout(fn, 0); };
+        await rejects(Sync.putRemote({ endpoint: 'https://webdav.example.net/file' }, document, '"old"'), 'may have been written');
+        global.setTimeout = oldTimeout;
     } finally {
         global.fetch = originalFetch;
+        if(oldTimeout) global.setTimeout = oldTimeout;
     }
 
     var originalChrome = global.chrome;
-    var originalWindow = global.window;
-    var storageModule = require.resolve('../js/storage');
-    var credentialModule = require.resolve('../js/credential_storage');
-    global.window = {};
-    global.chrome = {
-        runtime: { lastError: null },
-        storage: {
-            sync: null,
-            local: {
-                get: function(key, callback) { callback({ credentials: {} }); },
-                set: function(values, callback) {
-                    global.chrome.runtime.lastError = { message: 'mock storage quota error' };
-                    callback();
-                    global.chrome.runtime.lastError = null;
-                }
-            },
-            onChanged: { addListener: function() {} }
-        }
-    };
-    delete require.cache[credentialModule];
-    delete require.cache[storageModule];
-    try {
-        var CredentialStorage = require('../js/credential_storage');
-        await rejects(CredentialStorage.replaceAll(source), 'mock storage quota error');
-        assert.deepStrictEqual(JSON.parse(CredentialStorage.asJSON()), {}, 'failed persistence must not replace in-memory credentials');
-    } finally {
-        delete require.cache[credentialModule];
-        delete require.cache[storageModule];
-        global.chrome = originalChrome;
-        global.window = originalWindow;
-    }
-
     var alarmState = {};
     global.chrome = {
         runtime: { lastError: null },
@@ -192,7 +202,10 @@ async function main() {
     console.log('WebDAV sync tests passed.');
 }
 
-main().catch(function(error) {
+var completed = false;
+process.on('beforeExit', function() { if(!completed) { console.error('WebDAV test did not complete.'); process.exitCode = 1; } });
+main().then(function() { completed = true; }, function(error) {
+    completed = true;
     console.error(error.stack || error);
     process.exitCode = 1;
 });

@@ -1,10 +1,13 @@
+/*global Promise*/
 'use strict';
+require('./helpers/web_locks').installGlobalWebLocks();
 
 var assert = require('assert');
 
 var originalChrome = global.chrome;
 var originalWindow = global.window;
 var localData = {};
+var sessionData = {};
 var changeListeners = [];
 var syncCalls = 0;
 var nextGetError = null;
@@ -46,7 +49,17 @@ var local = {
         });
         changeListeners.slice().forEach(function(listener) { listener(changes, 'local'); });
         callback();
+    },
+    remove: function(keys, callback) {
+        (Array.isArray(keys) ? keys : [keys]).forEach(function(key) { delete localData[key]; });
+        callback();
     }
+};
+var session = {
+    get: function(keys, callback) { var result = {}; if(Object.prototype.hasOwnProperty.call(sessionData, keys)) result[keys] = sessionData[keys]; callback(result); },
+    set: function(values, callback) { Object.keys(values).forEach(function(key) { sessionData[key] = values[key]; }); callback(); },
+    remove: function(keys, callback) { (Array.isArray(keys) ? keys : [keys]).forEach(function(key) { delete sessionData[key]; }); callback(); },
+    setAccessLevel: function() { return Promise.resolve(); }
 };
 
 global.window = {};
@@ -54,6 +67,7 @@ global.chrome = {
     runtime: runtime,
     storage: {
         local: local,
+        session: session,
         sync: {
             get: function() { syncCalls++; },
             set: function() { syncCalls++; }
@@ -81,6 +95,8 @@ function rejects(promise, message) {
 async function main() {
     try {
         var Storage = require('../js/storage');
+        var Vault = require('../js/vault');
+        await Vault.create('storage test passphrase');
         assert.strictEqual(await Storage.getAsync('missing', 'fallback'), 'fallback');
         assert.strictEqual(syncCalls, 0, 'credential storage must not probe or use browser sync storage');
 
@@ -100,7 +116,8 @@ async function main() {
         });
 
         await Storage.setAsync('sample', 'stored');
-        assert.strictEqual(changeListeners.length, 1, 'only one chrome.storage.onChanged listener should be installed');
+        await new Promise(function(resolve) { setTimeout(resolve, 500); });
+        assert.strictEqual(changeListeners.length, 2, 'vault session and storage local listeners should be installed');
         assert.strictEqual(firstChanges, 1, 'each subscriber should receive one update');
         assert.strictEqual(secondChanges, 1, 'each subscriber should receive one update');
         assert.strictEqual(successes, 1);
@@ -108,6 +125,7 @@ async function main() {
 
         unregisterFirst();
         await Storage.setAsync('sample', 'stored');
+        await new Promise(function(resolve) { setTimeout(resolve, 500); });
         assert.strictEqual(firstChanges, 1, 'unsubscribed callbacks must not run');
         assert.strictEqual(secondChanges, 2);
 

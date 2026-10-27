@@ -23,22 +23,28 @@
         "page": "options.html"
     },
     "background": {
-        "scripts": ["js/extension.js"],
+        "scripts": [
+            "js/extension.js"
+        ],
         "persistent": false
     },
     "permissions": [
         "webRequest",
         "webRequestBlocking",
         "storage",
+        "alarms",
         "tabs",
-        "<all_urls>"
+        "https://*/*"
     ],
     "browser_specific_settings": {
         "gecko": {
             "id": "multipass-webdav-sync@example.com",
             "strict_min_version": "142.0",
             "data_collection_permissions": {
-                "required": ["authenticationInfo", "browsingActivity"]
+                "required": [
+                    "authenticationInfo",
+                    "browsingActivity"
+                ]
             }
         },
         "gecko_android": {

@@ -39,7 +39,7 @@
         "alarms"
     ],
     "host_permissions": [
-        "<all_urls>"
+        "https://*/*"
     ],
 
     "content_security_policy": {
