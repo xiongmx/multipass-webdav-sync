@@ -1,3 +1,7 @@
 build/
 dist/
 node_modules/
+
+# Local review material is not public source.
+*-DRAFT.md
+*-review-draft.html

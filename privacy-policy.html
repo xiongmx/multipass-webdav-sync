@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — MultiPass WebDAV Sync</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; color: #182230; background: #f5f7fa; }
+    body { margin: 0; padding: 2rem 1rem; }
+    main { max-width: 820px; margin: 0 auto; padding: clamp(1.25rem, 4vw, 2.5rem); background: #fff; border: 1px solid #d8dee8; border-radius: 14px; box-shadow: 0 8px 28px #16223a12; }
+    h1, h2 { line-height: 1.25; }
+    h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); margin-top: .4rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; }
+    .meta { color: #475467; }
+    a { color: #175cd3; overflow-wrap: anywhere; }
+    li { margin: .4rem 0; }
+    .zh { margin-top: 3rem; padding-top: 1rem; border-top: 2px solid #e4e7ec; }
+    footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e4e7ec; color: #475467; font-size: .95rem; }
+    @media (max-width: 480px) { body { padding: .6rem; } main { border-radius: 8px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy for MultiPass WebDAV Sync</h1>
+  <p class="meta"><strong>Publisher:</strong> xiongmx<br>
+  <strong>Effective date:</strong> 27 October 2026</p>
+
+  <p>This privacy policy describes version 1.1.1 of the unofficial MultiPass WebDAV Sync extension. It does not imply store approval or that every browser/device has been tested.</p>
+
+  <h2>Information the extension handles</h2>
+  <p>The extension handles information that you enter or that is needed to provide its authentication and optional synchronization features:</p>
+  <ul>
+    <li>Website URL-matching rules and the HTTP Basic usernames and passwords you save for those rules.</li>
+    <li>The URL and authentication-challenge details of a request being considered for a matching rule. The extension may also read the active tab URL and tab identifier to display its status.</li>
+    <li>If you enable WebDAV synchronization, the HTTPS WebDAV file URL, WebDAV account username and password, your chosen synchronization interval, and synchronization metadata such as ETags and revision information.</li>
+  </ul>
+  <p>The extension does not read the text or form contents of visited pages. It has no analytics, advertising, telemetry, developer-operated collection endpoint, or browser-account synchronization service.</p>
+
+  <h2>How the information is used and shared</h2>
+  <p>When a trusted HTTPS website issues an origin-server HTTP Basic authentication challenge that matches one of your rules, the extension sends the corresponding username and password to that challenged website over HTTPS. HTTP websites, proxy-authentication challenges, and non-Basic challenges are rejected.</p>
+  <p>WebDAV is optional and requires your explicit authorization on each device. When enabled, the extension sends the WebDAV account credentials in an HTTP Basic <code>Authorization</code> header over HTTPS to the endpoint you configure, and uploads or downloads a client-encrypted synchronization file. The original vault password is not sent to the WebDAV provider.</p>
+  <p>The WebDAV provider can observe the WebDAV account/authorization information, the endpoint, request timing and size, and synchronization metadata such as ETags. The synchronization file contents are encrypted by the extension and are not intended to be readable by the provider without the vault password. ETags and hashes help detect changes and conflicts; they are not encryption and do not prevent a malicious rollback.</p>
+  <p>The extension does not sell your data or transfer it to third parties for purposes unrelated to the extension's single purpose. Data is sent to the challenged website or the WebDAV endpoint you choose only as needed for the authentication or synchronization feature you use.</p>
+
+  <h2>Encryption and storage</h2>
+  <p>Version 1.1.1 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. A user-selected vault password is first processed with SHA-256 and then used as input to PBKDF2-HMAC-SHA-256 with 600,000 iterations. The original vault password is not stored. Password-derived root material is held in extension session storage in a trusted extension context; restarting the browser locks the vault and requires you to unlock it again.</p>
+  <p>Local credential rules, WebDAV account values, temporary values, backups, metadata, JSON exports, and WebDAV synchronization files are encrypted by the extension in version 1.1.1. Forgetting the vault password has no recovery backdoor. These statements describe the current implementation and do not claim an independent cryptographic audit or store certification.</p>
+
+  <h2>Retention and your controls</h2>
+  <p>Local data remains in the browser extension profile until you remove it or uninstall the extension. You can revoke WebDAV authorization, which stops scheduled synchronization and clears the locally stored WebDAV account, synchronization metadata, and local backups. Revoking authorization does not delete a remote WebDAV file or copies you have already downloaded or exported; remove those separately.</p>
+  <p>Creating the vault migrates legacy local data into encrypted storage, but the extension cannot guarantee secure erasure of old bytes in browser, device, or system backups. An existing plaintext remote file is not automatically adopted or overwritten; any migration requires a deliberate user action, and the original remote copy must be removed separately.</p>
+  <p>Locking the vault stops new credential responses and synchronization attempts. It cannot recall credentials or writes already sent, clear the browser's HTTP-authentication cache, or revoke sessions maintained by a website or WebDAV server.</p>
+
+  <h2>Security and availability</h2>
+  <p>Use HTTPS endpoints and trusted websites. WebDAV servers must support GET, PUT, conditional requests, and strong ETags for the synchronization safety checks. Browser alarms are best-effort and may run later than the selected interval. Synchronization stops on conflicts, missing or inconsistent baselines, weak or missing ETags, remote deletion, or other safety checks rather than silently choosing the latest timestamp.</p>
+  <p>This extension has not been independently security-audited. Automated tests do not constitute a security certification or guarantee compatibility with every WebDAV server or browser.</p>
+
+  <h2>Contact</h2>
+  <p>For privacy questions, contact <a href="mailto:multipass@xiongmx.com">multipass@xiongmx.com</a>.</p>
+
+  <section class="zh" lang="zh-Hans">
+    <h2>中文说明</h2>
+    <p>发布者：xiongmx；生效日期：2026年10月27日。联系邮箱：<a href="mailto:multipass@xiongmx.com">multipass@xiongmx.com</a>。</p>
+    <p>扩展会处理你保存的网站 URL 规则、对应的 HTTP Basic 用户名/密码、待匹配认证请求的 URL 与挑战信息；为显示状态，也可能读取当前标签页 URL 和 ID。WebDAV 同步是可选功能，启用后会处理你填写的 WebDAV HTTPS 地址、账号、同步周期和 ETag 等元数据。扩展不读取访问网页的正文或表单内容，也没有遥测、广告、开发者自建数据收集接口或浏览器账号同步服务。</p>
+    <p>当受信任的 HTTPS 网站发出匹配规则的源站 Basic 认证挑战时，扩展会通过 HTTPS 将对应凭据发送给该网站；HTTP、代理认证和非 Basic 挑战会被拒绝。启用 WebDAV 后，扩展通过 HTTPS Basic Authorization 访问你选择的端点，并上传或下载客户端加密的同步文件。WebDAV 服务仍可看到账号/授权信息、端点、请求时间与大小及 ETag 等元数据；同步文件内容按当前实现加密。扩展不会出售数据，也不会把数据用于与扩展单一用途无关的第三方转移。</p>
+    <p>1.1.1 版本使用 AES-GCM-256，随机 16 字节 salt、12 字节 IV；用户口令先经 SHA-256，再以 PBKDF2-HMAC-SHA-256 迭代 600,000 次派生密钥。原始保险库口令不保存，浏览器重启后需重新解锁。忘记口令无法恢复。撤销 WebDAV 授权会停止定时同步并清理本机 WebDAV 账号、元数据及备份，但不会删除远端文件或已下载/导出的副本。</p>
+    <p>旧明文本地数据只能在创建保险库时迁移，扩展无法保证擦除浏览器或系统备份中的旧字节；旧明文远端文件不会自动读取或覆盖，需显式迁移并另行清理原文件。锁定无法撤回已发送的凭据/请求，也不能清理浏览器认证缓存或服务器会话。本政策不构成独立安全审计或微软商店合规保证。</p>
+  </section>
+  <footer>MultiPass WebDAV Sync · Publisher: xiongmx · Effective date: 27 October 2026</footer>
+</main>
+</body>
+</html>
