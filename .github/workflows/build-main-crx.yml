@@ -59,7 +59,9 @@ jobs:
           import os
           import pathlib
           import struct
+          import subprocess
           import sys
+          import tempfile
           import zipfile
 
           path = pathlib.Path(sys.argv[1])
@@ -121,6 +123,18 @@ jobs:
           if expected_public_key not in embedded_public_keys:
               raise SystemExit("CRX public key does not match the configured persistent signing key")
 
+          rsa_signature = None
+          signed_header_data = None
+          for number, wire_type, value in fields(header):
+              if number == 10000 and wire_type == 2:
+                  signed_header_data = value
+              elif number == 2 and wire_type == 2:
+                  proof_fields = {n: v for n, w, v in fields(value) if w == 2}
+                  if proof_fields.get(1) == expected_public_key:
+                      rsa_signature = proof_fields.get(2)
+          if not rsa_signature or not signed_header_data:
+              raise SystemExit("CRX3 is missing the persistent-key RSA proof or signed header")
+
           extension_id_alphabet = "abcdefghijklmnop"
           digest = hashlib.sha256(expected_public_key).digest()[:16]
           extension_id = "".join(
@@ -130,6 +144,30 @@ jobs:
           )
           if extension_id != os.environ["EXPECTED_EXTENSION_ID"]:
               raise SystemExit("Signing key changed: extension ID does not match the pinned stable ID")
+          signed_fields = {n: v for n, w, v in fields(signed_header_data) if w == 2}
+          if signed_fields.get(1) != digest:
+              raise SystemExit("CRX3 signed extension ID does not match the persistent signing key")
+          with tempfile.TemporaryDirectory(prefix="multipass-crx3-verify-") as temporary:
+              temporary = pathlib.Path(temporary)
+              public_pem = temporary / "public.pem"
+              signature_file = temporary / "signature.bin"
+              signed_input = temporary / "signed-input.bin"
+              signature_file.write_bytes(rsa_signature)
+              signed_input.write_bytes(
+                  b"CRX3 SignedData\x00"
+                  + struct.pack("<I", len(signed_header_data))
+                  + signed_header_data
+                  + data[header_end:]
+              )
+              subprocess.run([
+                  "openssl", "pkey", "-pubin", "-inform", "DER", "-in", sys.argv[3],
+                  "-out", str(public_pem),
+              ], check=True)
+              subprocess.run([
+                  "openssl", "dgst", "-sha256", "-verify", str(public_pem),
+                  "-signature", str(signature_file), str(signed_input),
+              ], check=True)
+          print("CRX3 RSA SHA-256 signature verified.")
           archive = zipfile.ZipFile(io.BytesIO(data[header_end:]))
           bad_member = archive.testzip()
           if bad_member:
@@ -153,7 +191,8 @@ jobs:
               f"extension_id={extension_id}\n"
               f"crx_file={path.name}\n"
               f"crx_sha256={checksum}\n"
-              f"crx3_validated=true\n",
+              f"crx3_validated=true\n"
+              f"crx_signature_validated=true\n",
               encoding="utf-8",
           )
           summary = pathlib.Path(os.environ.get("GITHUB_STEP_SUMMARY", "artifacts/build-summary.md"))
