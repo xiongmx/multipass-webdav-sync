@@ -1,0 +1,172 @@
+name: Build Stable-ID Chrome CRX
+run-name: Build CRX for main@${{ github.sha }}
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Test, build and package stable-ID CRX
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out main update
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run project tests
+        run: npm test
+      - name: Build Chrome extension
+        run: npx --no-install gulp build-chrome
+      - name: Package and validate stable-ID CRX3
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          EXPECTED_EXTENSION_ID: hjkmgjalkohpaboeabhmjkidfbekmpda
+          CRX_SIGNING_KEY: ${{ secrets.MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028 }}
+        run: |
+          set -euo pipefail
+          command -v google-chrome
+          google-chrome --version
+          test -n "$CRX_SIGNING_KEY" || { echo 'Required Actions secret is missing.' >&2; exit 1; }
+          key="$RUNNER_TEMP/multipass-main-crx-signing-key.pem"
+          public_key="$RUNNER_TEMP/multipass-main-crx-public-key.der"
+          trap 'rm -f "$key" "$public_key"' EXIT
+          printf '%s\n' "$CRX_SIGNING_KEY" > "$key"
+          chmod 600 "$key"
+          openssl pkey -in "$key" -noout
+          openssl pkey -in "$key" -pubout -outform DER -out "$public_key"
+          google-chrome --headless --disable-gpu --no-sandbox \
+            --pack-extension="$GITHUB_WORKSPACE/build/chrome" \
+            --pack-extension-key="$key"
+          crx="$GITHUB_WORKSPACE/build/chrome.crx"
+          test -s "$crx"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          name="multipass-webdav-sync-main-${SOURCE_SHA}.crx"
+          cp "$crx" "$GITHUB_WORKSPACE/artifacts/$name"
+          python3 - "$GITHUB_WORKSPACE/artifacts/$name" "$SOURCE_SHA" "$public_key" <<'PY'
+          import hashlib
+          import io
+          import json
+          import os
+          import pathlib
+          import struct
+          import sys
+          import zipfile
+
+          path = pathlib.Path(sys.argv[1])
+          source_sha = sys.argv[2]
+          expected_public_key = pathlib.Path(sys.argv[3]).read_bytes()
+          data = path.read_bytes()
+          if data[:4] != b"Cr24":
+              raise SystemExit("CRX magic header is invalid")
+          crx_version = struct.unpack_from("<I", data, 4)[0]
+          if crx_version != 3:
+              raise SystemExit(f"Expected CRX3, got CRX version {crx_version}")
+          header_size = struct.unpack_from("<I", data, 8)[0]
+          header_start = 12
+          header_end = header_start + header_size
+          if header_size <= 0 or header_end >= len(data):
+              raise SystemExit("CRX3 header length is invalid")
+
+          def read_varint(buf, pos):
+              value = 0
+              shift = 0
+              while pos < len(buf) and shift < 70:
+                  byte = buf[pos]
+                  pos += 1
+                  value |= (byte & 0x7f) << shift
+                  if byte < 0x80:
+                      return value, pos
+                  shift += 7
+              raise SystemExit("Malformed protobuf varint in CRX3 header")
+
+          def fields(buf):
+              pos = 0
+              while pos < len(buf):
+                  tag, pos = read_varint(buf, pos)
+                  number, wire_type = tag >> 3, tag & 7
+                  if number == 0:
+                      raise SystemExit("Malformed protobuf field in CRX3 header")
+                  if wire_type == 0:
+                      value, pos = read_varint(buf, pos)
+                  elif wire_type == 1:
+                      value, pos = buf[pos:pos + 8], pos + 8
+                  elif wire_type == 2:
+                      length, pos = read_varint(buf, pos)
+                      value, pos = buf[pos:pos + length], pos + length
+                      if len(value) != length:
+                          raise SystemExit("Truncated protobuf field in CRX3 header")
+                  elif wire_type == 5:
+                      value, pos = buf[pos:pos + 4], pos + 4
+                  else:
+                      raise SystemExit(f"Unsupported protobuf wire type {wire_type}")
+                  yield number, wire_type, value
+
+          header = data[header_start:header_end]
+          embedded_public_keys = []
+          for number, wire_type, proof in fields(header):
+              if number in (2, 3) and wire_type == 2:
+                  for proof_number, proof_wire, proof_value in fields(proof):
+                      if proof_number == 1 and proof_wire == 2:
+                          embedded_public_keys.append(proof_value)
+          if expected_public_key not in embedded_public_keys:
+              raise SystemExit("CRX public key does not match the configured persistent signing key")
+
+          extension_id_alphabet = "abcdefghijklmnop"
+          digest = hashlib.sha256(expected_public_key).digest()[:16]
+          extension_id = "".join(
+              extension_id_alphabet[nibble]
+              for byte in digest
+              for nibble in (byte >> 4, byte & 0x0f)
+          )
+          if extension_id != os.environ["EXPECTED_EXTENSION_ID"]:
+              raise SystemExit("Signing key changed: extension ID does not match the pinned stable ID")
+          archive = zipfile.ZipFile(io.BytesIO(data[header_end:]))
+          bad_member = archive.testzip()
+          if bad_member:
+              raise SystemExit(f"ZIP CRC validation failed for {bad_member}")
+          members = archive.namelist()
+          if "manifest.json" not in members or "js/extension.js" not in members:
+              raise SystemExit("CRX payload is missing required extension files")
+          manifest = json.loads(archive.read("manifest.json"))
+          expected_version = json.loads(pathlib.Path("package.json").read_text(encoding="utf-8"))["version"]
+          if manifest.get("version") != expected_version:
+              raise SystemExit(f"Unexpected manifest version: {manifest.get('version')}")
+          checksum = hashlib.sha256(data).hexdigest()
+          print(f"Validated CRX3 package: {path.name} ({len(data)} bytes)")
+          print(f"Embedded extension version: {manifest['version']}")
+          print(f"Stable extension ID: {extension_id}")
+          print(f"Source commit: {source_sha}")
+          print(f"SHA-256: {checksum}")
+          pathlib.Path("artifacts/build-info.txt").write_text(
+              f"source_commit={source_sha}\n"
+              f"extension_version={manifest['version']}\n"
+              f"extension_id={extension_id}\n"
+              f"crx_file={path.name}\n"
+              f"crx_sha256={checksum}\n"
+              f"crx3_validated=true\n",
+              encoding="utf-8",
+          )
+          summary = pathlib.Path(os.environ.get("GITHUB_STEP_SUMMARY", "artifacts/build-summary.md"))
+          if summary.exists():
+              with summary.open("a", encoding="utf-8") as output:
+                  output.write(f"## Stable-ID CRX built successfully\n\n- Version: `{manifest['version']}`\n- Extension ID: `{extension_id}`\n- SHA-256: `{checksum}`\n- Source: `{source_sha}`\n")
+          PY
+      - name: Upload main-branch CRX artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: main-crx-${{ github.sha }}
+          path: |
+            artifacts/multipass-webdav-sync-main-${{ github.sha }}.crx
+            artifacts/build-info.txt
+          if-no-files-found: error
+          retention-days: 30
