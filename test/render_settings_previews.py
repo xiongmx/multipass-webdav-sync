@@ -69,7 +69,10 @@ global.chrome = { runtime, storage: {
   const Vault = require(process.argv[2]);
   await Vault.ready();
   await Vault.create(process.argv[3]);
-  process.stdout.write(JSON.stringify({ local: localData, session: sessionData }));
+  const unlocked = { local: clone(localData), session: clone(sessionData) };
+  await Vault.lock();
+  const locked = { local: clone(localData), session: clone(sessionData) };
+  process.stdout.write(JSON.stringify({ unlocked, locked }));
 })().catch(error => { process.stderr.write(error.stack || String(error)); process.exit(1); });
 '''
     with tempfile.TemporaryDirectory(prefix="multipass-vault-fixture-") as temp:
@@ -145,7 +148,7 @@ def dom_probe() -> str:
     const root = document.getElementById('vault-ui');
     if (!root) return;
     const passwordInputs = root.querySelectorAll('input[type="password"]').length;
-    const state = passwordInputs === 2 ? 'setup' : passwordInputs === 1 ? 'locked' : root.querySelector('button') ? 'unlocked' : 'unknown';
+    const state = root.querySelector('input[type="checkbox"]') ? 'setup' : passwordInputs === 1 ? 'locked' : root.querySelector('button') ? 'unlocked' : 'unknown';
     root.dataset.vaultState = state;
     document.documentElement.dataset.renderScrollWidth = String(document.documentElement.scrollWidth);
     document.documentElement.dataset.renderHeight = String(Math.max(document.documentElement.scrollHeight, document.body.scrollHeight));
@@ -168,12 +171,12 @@ def prepare_page(temp_chrome: Path, fixture: dict, messages: dict, ui_language: 
     page.write_text(html.replace(needle, replacement), encoding="utf-8")
 
 
-def render(temp_chrome: Path, width: int, expected: str, destination: Path, ui_language: str) -> None:
+def render(temp_chrome: Path, viewport: tuple[int, int], expected: str, destination: Path, ui_language: str) -> None:
     # Playwright launches a fresh temporary browser profile, never the user's profile.
     with sync_playwright() as runtime:
         browser = runtime.chromium.launch(executable_path=str(CHROMIUM), headless=True,
             args=["--no-sandbox", "--allow-file-access-from-files", "--disable-background-networking"])
-        context = browser.new_context(viewport={"width": width, "height": 1000 if width > 640 else 844}, device_scale_factor=1)
+        context = browser.new_context(viewport={"width": viewport[0], "height": viewport[1]}, device_scale_factor=1)
         context.route("**/*", lambda route: route.abort() if route.request.url.startswith(("http://", "https://")) else route.continue_())
         page = context.new_page()
         errors = []
@@ -184,9 +187,41 @@ def render(temp_chrome: Path, width: int, expected: str, destination: Path, ui_l
         except Exception as error:
             raise RuntimeError(json.dumps({"pageErrors": errors, "vaultText": page.locator("#vault-ui").all_text_contents(), "ready": page.evaluate("document.readyState")}, ensure_ascii=False)) from error
         page.evaluate("document.fonts.ready")
-        metrics = page.evaluate("({width: innerWidth, scroll: document.documentElement.scrollWidth, height: Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)})")
-        if metrics["width"] != width or metrics["scroll"] > width:
+        metrics = page.evaluate("({width: innerWidth, rootScroll: document.documentElement.scrollWidth, bodyScroll: document.body.scrollWidth, height: Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)})")
+        if metrics["width"] != viewport[0] or metrics["rootScroll"] > viewport[0] or metrics["bodyScroll"] > viewport[0]:
             raise AssertionError(f"Incorrect viewport or horizontal overflow: {metrics}")
+        bad_controls = page.evaluate("""() => [...document.querySelectorAll('button,input,select,textarea')]
+          .filter(el => el.offsetParent !== null)
+          .map(el => ({tag: el.tagName, id: el.id, rect: el.getBoundingClientRect()}))
+          .filter(item => item.rect.width <= 0 || item.rect.left < -1 || item.rect.right > innerWidth + 1)
+          .map(item => ({tag: item.tag, id: item.id, left: item.rect.left, right: item.rect.right}))""")
+        if bad_controls:
+            raise AssertionError(f"Visible controls overflow viewport: {bad_controls}")
+        wide_sections = page.evaluate("""() => {
+          const main = document.querySelector('.settings-page').getBoundingClientRect();
+          return [...document.querySelectorAll('.settings-page > .settings-section--wide')]
+            .map(section => ({main: main.width, width: section.getBoundingClientRect().width}));
+        }""")
+        if any(abs(item["main"] - item["width"]) > 2 for item in wide_sections):
+            raise AssertionError(f"Wide sections do not fill the settings grid: {wide_sections}")
+        if viewport[0] <= 900:
+            unpaired_rows = page.evaluate("""() => {
+              const selectors = ['.credential-form-actions', '.webdav-actions', '.clear-actions', '.credential-table td.action'];
+              return selectors.flatMap(selector => [...document.querySelectorAll(selector)].flatMap(container => {
+                const buttons = [...container.querySelectorAll('button')].filter(button => button.offsetParent !== null);
+                if (buttons.length < 2) return [];
+                const rows = new Map();
+                buttons.forEach(button => {
+                  const top = Math.round(button.getBoundingClientRect().top / 4) * 4;
+                  rows.set(top, (rows.get(top) || 0) + 1);
+                });
+                return [...rows].filter(([, count]) => count < 2).map(([top, count]) => ({selector, top, count, total: buttons.length}));
+              }));
+            }""")
+            if unpaired_rows:
+                raise AssertionError(f"Mobile multi-button rows have fewer than two buttons: {unpaired_rows}")
+        if errors:
+            raise AssertionError(f"Page errors: {errors}")
         rendered_text = page.locator("body").inner_text()
         if "\ufffd" in rendered_text:
             raise AssertionError("Rendered UI contains a Unicode replacement character")
@@ -196,7 +231,7 @@ def render(temp_chrome: Path, width: int, expected: str, destination: Path, ui_l
         page.screenshot(path=str(destination), full_page=True)
         context.close()
         browser.close()
-    print(f"Rendered {expected}: {width}x{metrics['height']}, no horizontal overflow -> {destination}", flush=True)
+    print(f"Rendered {expected}: {viewport[0]}x{viewport[1]}, no horizontal overflow -> {destination}", flush=True)
 
 
 def main() -> None:
@@ -211,23 +246,28 @@ def main() -> None:
     generated = node_fixture()
     fixtures = {
         "setup": {"local": {}, "session": {}},
-        "locked": {"local": generated["local"], "session": {}},
-        "unlocked": generated,
+        "locked": generated["locked"],
+        "unlocked": generated["unlocked"],
     }
     with tempfile.TemporaryDirectory(prefix="multipass-settings-preview-") as temp:
         root = Path(temp)
         for locale, messages in locale_messages.items():
             ui_language = "zh-CN" if locale == "zh_CN" else "en"
-            for name, width, expected, output_name in [
-                ("setup", 1440, "setup", "setup-desktop"),
-                ("locked", 390, "locked", "mobile-locked"),
-                ("unlocked", 390, "unlocked", "mobile-unlocked"),
+            for name, viewport, expected, output_name in [
+                ("unlocked", (320, 844), "unlocked", "phone-portrait-narrow"),
+                ("unlocked", (390, 844), "unlocked", "phone-portrait"),
+                ("unlocked", (844, 390), "unlocked", "phone-landscape"),
+                ("unlocked", (820, 1180), "unlocked", "tablet-portrait"),
+                ("unlocked", (1180, 820), "unlocked", "tablet-landscape"),
+                ("unlocked", (1440, 1000), "unlocked", "desktop"),
+                ("setup", (1440, 1000), "setup", "setup-desktop"),
+                ("locked", (390, 844), "locked", "mobile-locked"),
             ]:
-                isolated = root / locale / name / "chrome"
+                isolated = root / locale / name / output_name / "chrome"
                 shutil.copytree(CHROME, isolated)
                 prepare_page(isolated, fixtures[name], messages, ui_language)
                 destination = OUTPUT / f"options-{locale}-{output_name}.png"
-                render(isolated, width, expected, destination, ui_language)
+                render(isolated, viewport, expected, destination, ui_language)
     print(f"Rendered English and Simplified Chinese settings previews to {OUTPUT}")
 
 

@@ -505,3 +505,174 @@ table.form-table td output ul {
     #vault-ui { padding: 14px; margin-bottom: 16px; }
     #vault-ui form > label, #vault-ui form > .vault-passphrase-field, #vault-ui form > button { flex-basis: 100%; width: 100%; }
 }
+
+
+/* Responsive settings surface: reflow content instead of scaling the page. */
+body.chrome-bootstrap {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0 auto;
+    padding: clamp(0.75rem, 2.5vw, 2.25rem);
+    background: #f3f5f8;
+    color: #202a36;
+    font: 400 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.mainview.view.settings-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(0.75rem, 1.6vw, 1.25rem);
+    width: min(100%, 1440px);
+    min-width: 0;
+    margin: 0 auto;
+    padding: 0;
+}
+
+.settings-section {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    align-self: start;
+    padding: clamp(1rem, 1.8vw, 1.5rem);
+    border: 1px solid #dce2e8;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.chrome-bootstrap main.settings-page > section.settings-section {
+    width: auto;
+    max-width: none;
+}
+
+.settings-section--wide,
+.settings-footer {
+    grid-column: 1 / -1;
+}
+
+.settings-section > :first-child { margin-top: 0; }
+.settings-section > :last-child { margin-bottom: 0; }
+.settings-section h2,
+#vault-ui h2 {
+    margin: 0 0 0.85rem;
+    color: #193254;
+    font-size: 1.2rem;
+    line-height: 1.3;
+}
+
+.settings-section p { line-height: 1.55; }
+.settings-section button { min-height: 2.8em; }
+.settings-section input,
+.settings-section textarea,
+.settings-section select { max-width: 100%; }
+
+.settings-section .webdav-table { max-width: none; }
+.settings-section .webdav-table input,
+.settings-section .webdav-table select,
+.settings-section .form-table input,
+.settings-section .form-table textarea { width: 100%; }
+
+.settings-section .webdav-actions { align-items: stretch; }
+.settings-section .webdav-actions button,
+.settings-section .credential-form-actions button,
+.settings-section .clear-actions button {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.settings-footer {
+    padding: 0 0.25rem;
+    color: #586575;
+    font-size: 0.9rem;
+}
+
+#vault-ui {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+.credential-fields label > span[data-i18n="http_basic_notice"] {
+    display: block;
+    margin-top: 0.4rem;
+    color: #725116;
+    font-size: 0.88em;
+    font-weight: 400;
+    line-height: 1.45;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 2px solid #2563a6;
+    outline-offset: 2px;
+}
+
+@media (min-width: 960px) {
+    .mainview.view.settings-page { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1280px) {
+    .mainview.view.settings-page { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (orientation: landscape) and (min-width: 720px) and (max-width: 959px) {
+    .mainview.view.settings-page { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+    body.chrome-bootstrap {
+        width: 100%;
+        margin: 0 auto;
+        padding: clamp(0.75rem, 2vw, 1.25rem);
+    }
+
+    .credential-form-actions,
+    .webdav-actions,
+    .clear-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .credential-form-actions button,
+    .webdav-actions button,
+    .clear-actions button {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        flex: none;
+    }
+
+    table.credential-table tbody td.action {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.4rem;
+    }
+
+    .credentials button {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        flex: none;
+    }
+}
+
+@media (max-width: 640px) {
+    body.chrome-bootstrap { padding: 0.75rem; }
+    .settings-section { border-radius: 10px; }
+    .settings-section--wide,
+    .settings-footer { grid-column: 1; }
+    #vault-ui { padding: 0.9rem; }
+}
+
+@media (max-width: 360px) {
+    body.chrome-bootstrap { padding: 0.5rem; }
+    .settings-section { padding: 0.85rem; }
+}

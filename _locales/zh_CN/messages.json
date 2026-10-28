@@ -108,7 +108,7 @@
         "description": "Export section title"
     },
     "export_button": {
-        "message": "下载加密凭据。恢复时需要使用同一个保险库口令。",
+        "message": "下载加密凭据（恢复时需使用同一保险库口令）。",
         "description": "Export button"
     },
     "clear_section": {
@@ -128,7 +128,7 @@
         "description": "Text accompanying the donation button"
     },
     "http_basic_notice": {
-        "message": "站点规则可匹配 HTTP 或 HTTPS。普通 HTTP 下 Basic 凭据不会加密传输；仅在可信站点使用 HTTP，建议优先使用 HTTPS。",
+        "message": "普通 HTTP 下 Basic 凭据不加密；请优先使用 HTTPS。仅支持直接的 Basic 身份验证。",
         "description": "User-visible extension UI message."
     },
     "site_rule_default_notice": {
@@ -136,7 +136,7 @@
         "description": "User-visible extension UI message."
     },
     "import_legacy_warning": {
-        "message": "导入加密导出文件或备份时使用同一保险库口令。下方旧版明文示例仅用于一次性迁移，且需要确认。导入内容会在本地保存前加密；请另行删除旧的明文副本。",
+        "message": "导入加密文件需使用同一保险库口令。旧版明文示例仅用于需确认的一次性迁移；导入后会加密，但不会删除原文件。",
         "description": "User-visible extension UI message."
     },
     "webdav_title": {
@@ -144,15 +144,15 @@
         "description": "User-visible extension UI message."
     },
     "webdav_intro": {
-        "message": "WebDAV 同步通过 HTTPS 使用你配置的端点账号。同步文档和本地 WebDAV 状态由扩展保险库加密（AES-GCM-256、PBKDF2-SHA256，迭代 600,000 次）。原始保险库口令不会被保存。",
+        "message": "HTTPS 保护传输；同步数据由保险库加密后发送。保险库口令不会被保存。",
         "description": "User-visible extension UI message."
     },
     "webdav_disclosure_heading": {
-        "message": "数据使用和第三方披露：",
+        "message": "发送给服务方的数据与可见信息：",
         "description": "User-visible extension UI message."
     },
     "webdav_disclosure_body": {
-        "message": "同步时，扩展会将你配置的 WebDAV 用户名/密码及加密后的同步密文发送到你填写的第三方 WebDAV 端点。端点运营方仍可看到账号、URL、请求时间、密文大小和 ETag，但没有保险库密钥材料就无法读取同步文档。作为传输账号的 Basic 身份验证凭据对 WebDAV 服务可见。同步要求保险库处于解锁状态；锁定会停止定时任务并取消正在进行的请求。",
+        "message": "同步会将 WebDAV 用户名/密码和加密密文发送到你填写的端点。服务方可见传输账号、URL、时间、密文大小和 ETag；没有保险库密钥材料就无法读取密文。同步需先解锁保险库。",
         "description": "User-visible extension UI message."
     },
     "webdav_example_label": {
@@ -212,7 +212,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_consent": {
-        "message": "我已了解数据用途、第三方接收方、加密密文存储及 WebDAV 账号元数据可见性，并明确授权在此设备上启用 WebDAV 同步。",
+        "message": "我已了解此端点会收到 WebDAV 账号和加密数据，并可查看连接元数据；我明确授权在此设备上同步。",
         "description": "User-visible extension UI message."
     },
     "webdav_save": {
@@ -244,7 +244,7 @@
         "description": "User-visible extension UI message."
     },
     "webdav_warning": {
-        "message": "所有 WebDAV 端点都必须使用 HTTPS，包括 localhost、127.0.0.1 和 [::1]。WebDAV 保存的是加密同步封装；服务器仍能看到 Basic 账号凭据和请求元数据。自动同步会拒绝旧版明文远端文件，绝不会静默覆盖；请先下载备份，检查后再使用明确的“推送本地”操作迁移。超过 5 MiB 的文件会被拒绝。自动同步依赖共同基线和强 ETag；如果两台设备都发生更改、远端文件被删除、快照为空或服务器未返回可靠 ETag，自动同步会停止并等待检查。浏览器定时任务可能晚于所选间隔运行。",
+        "message": "所有端点（包括 localhost、127.0.0.1 和 [::1]）都必须使用 HTTPS。自动同步拒绝旧版明文文件；请保留并检查备份，再明确选择“推送本地”迁移。文件上限为 5 MiB。发生冲突、远端删除、凭据集为空或 ETag 不可靠时，自动同步会暂停等待检查；浏览器定时任务可能延迟。",
         "description": "User-visible extension UI message."
     },
     "clear_sensitive_button": {
@@ -252,7 +252,7 @@
         "description": "User-visible extension UI message."
     },
     "clear_sensitive_warning": {
-        "message": "此本地清除操作需要确认，并会移除本地凭据、临时凭据表单数据、WebDAV 账号/设置、同步元数据、备份、自动同步状态和持久保存的 Vault 根密钥材料。它不会删除远端 WebDAV 文件或已下载到电脑的文件；请另行删除这些文件。",
+        "message": "此操作需确认：会清除本机凭据/临时表单数据、WebDAV 账号和设置、同步元数据/备份、自动同步状态及持久保存的保险库密钥材料。不会删除远端 WebDAV 文件或已下载文件。",
         "description": "User-visible extension UI message."
     },
     "footer_disclaimer": {
@@ -292,7 +292,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_setup_description": {
-        "message": "保险库会将现有旧版明文设置和凭据一次性迁入加密存储。旧版 WebDAV 明文文件不会自动覆盖，必须明确执行迁移。忘记口令后无法恢复。本提示不代表符合任何应用商店规范。",
+        "message": "首次设置时，保险库会加密本地凭据和设置。忘记口令无法恢复；旧版 WebDAV 明文文件不会自动覆盖，须明确选择“推送本地”迁移。",
         "description": "User-visible extension UI message."
     },
     "vault_new_passphrase": {
@@ -336,7 +336,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_locked_description": {
-        "message": "本页的身份验证和同步已暂停。锁定会清除持久保存的 Vault 根密钥材料，下次需要输入口令。锁定无法撤销浏览器已缓存的身份验证或服务器维护的会话。",
+        "message": "身份验证和同步已暂停。锁定会清除本地保险库密钥；下次需输入口令解锁。它无法撤销浏览器缓存的凭据或服务器会话。",
         "description": "User-visible extension UI message."
     },
     "vault_passphrase": {
@@ -400,7 +400,7 @@
         "description": "User-visible extension UI message."
     },
     "vault_persistence_disclosure": {
-        "message": "创建或解锁保险库后，除非你点击“锁定保险库”，否则即使浏览器或应用重启，保险库也会保持解锁。自动解锁只会在本地保存保险库根密钥材料，不保存口令；WebDAV 账号数据仍以加密形式保存。能访问此浏览器配置文件或扩展上下文的人可能使用保险库并解密本地数据或远端同步密文；请勿在共享设备上使用。",
+        "message": "保险库会在浏览器/应用重启后保持解锁，直到你明确锁定。本地只保存保险库根密钥材料，不保存口令；WebDAV 账号数据仍加密。能访问此浏览器配置文件或扩展的人可使用保险库并解密本地数据或同步密文，请勿在共享设备上启用。",
         "description": "Security disclosure for persistent Vault unlocked state."
     },
     "webdav_vault_unavailable": {
