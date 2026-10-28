@@ -15,6 +15,8 @@ assert.match(workflow, /github\.event_name == 'release' && github\.event\.action
 assert.match(workflow, /needs\.validate\.outputs\.eligible == 'true' && needs\.validate\.outputs\.in_main == 'true'/, 'only an eligible release in main history may build or publish');
 assert.match(workflow, /stable-id-crx-\$\{\{ needs\.validate\.outputs\.tag \}\}/, 'release must download the CRX built from its validated tag');
 assert.match(workflow, /gh release upload "\$RELEASE_TAG" "\$crx" --clobber/, 'versioned CRX must be attached to the GitHub Release');
+assert.doesNotMatch(workflow, /secrets:\s*inherit/, 'the reusable CRX workflow must not inherit unrelated store secrets');
+assert.match(workflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028:\s*\$\{\{\s*secrets\.MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028\s*\}\}/);
 assert.match(workflow, /node scripts\/publish-edge-addons\.mjs/);
 assert.match(workflow, /EDGE_ADDONS_API_KEY:\s*\$\{\{\s*secrets\.EDGE_ADDONS_API_KEY\s*\}\}/);
 assert.doesNotMatch(workflow, /vars\.EDGE_ADDONS_API_KEY/, 'the API key must never fall back to a plain Actions variable');
@@ -23,6 +25,7 @@ assert.doesNotMatch(workflow, /EDGE_ADDONS_PRODUCT_ID/, 'workflow must not depen
 const buildWorkflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/build-main-crx.yml'), 'utf8');
 assert.match(buildWorkflow, /^on:\n  push:\n    branches:\n      - main\n  workflow_call:/m, 'every main push must build CRX and release jobs may reuse the build');
 assert.match(buildWorkflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028/);
+assert.match(buildWorkflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028:\n\s+required: true/);
 assert.match(buildWorkflow, /hjkmgjalkohpaboeabhmjkidfbekmpda/);
 assert.match(buildWorkflow, /scripts\/verify-crx3\.py/);
 

@@ -11,6 +11,9 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028:
+        required: true
 permissions:
   contents: read
 jobs:

@@ -60,7 +60,8 @@ jobs:
     uses: ./.github/workflows/build-main-crx.yml
     with:
       source_ref: ${{ needs.validate.outputs.tag }}
-    secrets: inherit
+    secrets:
+      MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028: ${{ secrets.MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028 }}
   publish:
     name: Attach CRX and submit eligible release to Edge Add-ons
     needs:
