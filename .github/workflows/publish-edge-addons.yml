@@ -1,82 +1,113 @@
 name: Publish Microsoft Edge Add-on
-
 on:
-  push:
-    tags:
-      - 'v*.*.*'
-      - '*.*.*'
-
+  release:
+    types:
+      - published
 permissions:
   contents: read
-
 concurrency:
-  group: edge-addons-${{ github.ref }}
+  group: edge-addons-${{ github.event.release.tag_name }}
   cancel-in-progress: false
-
 jobs:
-  publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+  validate:
+    name: Validate published stable release
+    if: github.event_name == 'release' && github.event.action == 'published' && github.event.release.prerelease == false
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    outputs:
+      eligible: ${{ steps.release-gate.outputs.eligible }}
+      version: ${{ steps.release-gate.outputs.version }}
+      tag: ${{ steps.release-gate.outputs.tag }}
+      in_main: ${{ steps.main-ancestry.outputs.in_main }}
     steps:
-      - name: Check out tagged source
+      - name: Check out release source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
           persist-credentials: false
-
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+      - name: Validate published event, stable tag, and source versions
+        id: release-gate
+        env:
+          RELEASE_EVENT_NAME: ${{ github.event_name }}
+          RELEASE_EVENT_ACTION: ${{ github.event.action }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node scripts/validate-release-event.cjs
+      - name: Verify release commit is on main
+        id: main-ancestry
+        if: steps.release-gate.outputs.eligible == 'true'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          release_sha="$(git rev-parse HEAD)"
+          if git merge-base --is-ancestor "$release_sha" FETCH_HEAD; then
+            echo 'in_main=true' >> "$GITHUB_OUTPUT"
+            echo "Release commit $release_sha is in main history."
+          else
+            echo 'in_main=false' >> "$GITHUB_OUTPUT"
+            echo "Release commit $release_sha is not in main history; store submission is blocked."
+          fi
+  build-crx:
+    name: Build signed CRX from the release tag
+    needs: validate
+    if: needs.validate.outputs.eligible == 'true' && needs.validate.outputs.in_main == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-main-crx.yml
+    with:
+      source_ref: ${{ needs.validate.outputs.tag }}
+    secrets: inherit
+  publish:
+    name: Attach CRX and submit eligible release to Edge Add-ons
+    needs:
+      - validate
+      - build-crx
+    if: needs.validate.outputs.eligible == 'true' && needs.validate.outputs.in_main == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - name: Check out validated release source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          persist-credentials: false
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: npm
-
-      - name: Check tag and source version consistency
-        id: version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const { parseReleaseVersion } = require('./scripts/release-version.cjs');
-          const tag = process.env.RELEASE_TAG;
-          const version = parseReleaseVersion(tag || '');
-          if (!version) throw new Error('Release tag must be a stable semantic version, optionally prefixed with v.');
-
-          const packageVersion = require('./package.json').version;
-          const lockVersion = require('./package-lock.json').packages?.['']?.version;
-          const manifestVersion = require('./vendor/common/manifest.json').version;
-          for (const [source, actual] of Object.entries({
-            'package.json': packageVersion,
-            'package-lock.json': lockVersion,
-            'vendor/common/manifest.json': manifestVersion,
-          })) {
-            if (actual !== version) {
-              throw new Error(`${source} version ${actual} does not match tag version ${version}.`);
-            }
-          }
-
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
-          console.log(`Validated release tag and source version ${version}.`);
-          NODE
-
       - name: Install locked dependencies
         run: npm ci
-
-      - name: Run project tests
-        run: npm test
-
       - name: Build release packages
         run: |
           npm run dist
           npm run dist:firefox-android
-
       - name: Verify release packages
         run: npm run test:packages
-
-      - name: Upload package and submit to certification
+      - name: Download signed CRX artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: stable-id-crx-${{ needs.validate.outputs.tag }}
+          path: ${{ runner.temp }}/release-crx
+      - name: Attach versioned CRX to the published GitHub Release
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          crx="$RUNNER_TEMP/release-crx/multipass-webdav-sync-${RELEASE_TAG}.crx"
+          test -s "$crx"
+          gh release upload "$RELEASE_TAG" "$crx" --clobber
+      - name: Upload package and submit to Edge Add-ons certification
+        env:
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
           EDGE_ADDONS_API_KEY: ${{ secrets.EDGE_ADDONS_API_KEY }}
           EDGE_ADDONS_CLIENT_ID: ${{ secrets.EDGE_ADDONS_CLIENT_ID || vars.EDGE_ADDONS_CLIENT_ID }}
         run: node scripts/publish-edge-addons.mjs
