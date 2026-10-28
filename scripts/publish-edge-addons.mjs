@@ -74,6 +74,10 @@ function authHeaders(apiKey, clientId) {
 
 function operationIdFromLocation(location, productId, statusPath) {
   if (!location) fail('Microsoft API response did not include the documented Location header.');
+  location = location.trim();
+  // The documented response is Location: {operationID}, not necessarily a URL.
+  // Reconstruct polling URLs locally; never send credentials to this value.
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(location)) return location;
 
   let url;
   try {
@@ -82,11 +86,11 @@ function operationIdFromLocation(location, productId, statusPath) {
     fail('Microsoft API returned an invalid operation Location.');
   }
   const prefix = statusPath;
-  if (url.origin !== API_ROOT || !url.pathname.startsWith(prefix)) {
+  if (url.origin !== API_ROOT || url.username || url.password || url.search || url.hash || !url.pathname.startsWith(prefix)) {
     fail('Microsoft API returned an unexpected operation Location; no credentials were sent to it.');
   }
   const operationId = decodeURIComponent(url.pathname.slice(prefix.length));
-  if (!operationId || operationId.includes('/') || !/^[A-Za-z0-9._-]+$/.test(operationId)) {
+  if (!operationId || operationId.includes('/') || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(operationId)) {
     fail('Microsoft API returned an invalid operation ID.');
   }
   return operationId;
@@ -131,6 +135,7 @@ async function main() {
   if (upload.status !== 202) fail(`Package upload returned HTTP ${upload.status}; expected 202 Accepted.`);
   const uploadStatusPath = `/v1/products/${productId}/submissions/draft/package/operations/`;
   const uploadOperation = operationIdFromLocation(upload.headers.get('location'), productId, uploadStatusPath);
+  console.log(`Package upload operation ID: ${uploadOperation}`);
   await waitForOperation(uploadOperation, uploadStatusPath, headers, 'Package upload');
 
   const submitUrl = `${API_ROOT}/v1/products/${productId}/submissions`;
@@ -142,6 +147,7 @@ async function main() {
   if (submission.status !== 202) fail(`Certification submission returned HTTP ${submission.status}; expected 202 Accepted.`);
   const submitStatusPath = `/v1/products/${productId}/submissions/operations/`;
   const submitOperation = operationIdFromLocation(submission.headers.get('location'), productId, submitStatusPath);
+  console.log(`Certification submission operation ID: ${submitOperation}`);
   await waitForOperation(submitOperation, submitStatusPath, headers, 'Certification submission');
 
   console.log(`Version ${version} was submitted to Edge Add-ons certification for the existing product.`);

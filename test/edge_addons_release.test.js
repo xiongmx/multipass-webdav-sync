@@ -91,7 +91,8 @@ async function verifyRedirectIsRejected() {
 }
 
 verifyRedirectIsRejected()
-  .then(() => process.stdout.write('Edge Add-ons release, product-ID, and redirect tests passed.\n'))
+  .then(() => require('./helpers/edge_addons_submission_mock.cjs').runEdgeAddonsSubmissionMock())
+  .then(() => process.stdout.write('Edge Add-ons release, product-ID, redirect, and offline submission tests passed.\n'))
   .catch((error) => {
     console.error(error);
     process.exitCode = 1;
