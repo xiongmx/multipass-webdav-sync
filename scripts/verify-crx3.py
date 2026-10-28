@@ -138,6 +138,9 @@ manifest = json.loads(archive.read("manifest.json"))
 expected_version = json.loads(pathlib.Path("package.json").read_text(encoding="utf-8"))["version"]
 if manifest.get("version") != expected_version:
     raise SystemExit(f"Unexpected manifest version: {manifest.get('version')}")
+expected_filename = f"multipass-webdav-sync-v{expected_version}.crx"
+if path.name != expected_filename:
+    raise SystemExit(f"Expected CRX filename {expected_filename}, got {path.name}")
 checksum = hashlib.sha256(data).hexdigest()
 print(f"Validated CRX3 package: {path.name} ({len(data)} bytes)")
 print(f"Embedded extension version: {manifest['version']}")

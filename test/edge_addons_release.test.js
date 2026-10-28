@@ -13,7 +13,8 @@ assert.doesNotMatch(workflow, /^\s+push:/m, 'tag and branch pushes must not trig
 assert.doesNotMatch(workflow, /^\s+(?:workflow_dispatch|pull_request|schedule):/m, 'workflow must have no manual, PR, or scheduled trigger');
 assert.match(workflow, /github\.event_name == 'release' && github\.event\.action == 'published' && github\.event\.release\.prerelease == false/);
 assert.match(workflow, /needs\.validate\.outputs\.eligible == 'true' && needs\.validate\.outputs\.in_main == 'true'/, 'only an eligible release in main history may build or publish');
-assert.match(workflow, /stable-id-crx-\$\{\{ needs\.validate\.outputs\.tag \}\}/, 'release must download the CRX built from its validated tag');
+assert.match(workflow, /stable-id-crx-v\$\{\{ needs\.validate\.outputs\.version \}\}/, 'release must download the CRX artifact for its validated version');
+assert.match(workflow, /release-crx\/multipass-webdav-sync-v\$\{RELEASE_VERSION\}\.crx/, 'GitHub Release asset must use the concise versioned filename');
 assert.match(workflow, /gh release upload "\$RELEASE_TAG" "\$crx" --clobber/, 'versioned CRX must be attached to the GitHub Release');
 assert.doesNotMatch(workflow, /secrets:\s*inherit/, 'the reusable CRX workflow must not inherit unrelated store secrets');
 assert.match(workflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028:\s*\$\{\{\s*secrets\.MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028\s*\}\}/);
@@ -28,6 +29,13 @@ assert.match(buildWorkflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028/);
 assert.match(buildWorkflow, /MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028:\n\s+required: true/);
 assert.match(buildWorkflow, /hjkmgjalkohpaboeabhmjkidfbekmpda/);
 assert.match(buildWorkflow, /scripts\/verify-crx3\.py/);
+assert.match(buildWorkflow, /name: stable-id-crx-v\$\{\{ steps\.source\.outputs\.version \}\}/, 'main builds must use a concise versioned artifact name');
+assert.match(buildWorkflow, /artifacts\/multipass-webdav-sync-v\$\{\{ steps\.source\.outputs\.version \}\}\.crx/, 'main builds must upload a concise versioned CRX filename');
+assert.match(buildWorkflow, /EXTENSION_VERSION:\s*\$\{\{ steps\.source\.outputs\.version \}\}/, 'CRX filename version must come from the checked-out source');
+
+const crxVerifier = fs.readFileSync(path.join(__dirname, '../scripts/verify-crx3.py'), 'utf8');
+assert.match(crxVerifier, /expected_filename = f"multipass-webdav-sync-v\{expected_version\}\.crx"/, 'CRX verifier must enforce the short versioned filename');
+assert.match(crxVerifier, /f"source_commit=\{source_sha\}\\n"/, 'build-info must retain the complete source commit hash');
 
 const publisher = fs.readFileSync(path.join(__dirname, '../scripts/publish-edge-addons.mjs'), 'utf8');
 assert.match(publisher, /Required encrypted GitHub Actions secret EDGE_ADDONS_API_KEY is unavailable/);

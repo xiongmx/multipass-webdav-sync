@@ -27,9 +27,13 @@ jobs:
         with:
           ref: ${{ inputs.source_ref || github.sha }}
           persist-credentials: false
-      - name: Record source commit
+      - name: Record source commit and extension version
         id: source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          version="$(node -p 'require("./package.json").version')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -46,7 +50,7 @@ jobs:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           EXPECTED_EXTENSION_ID: hjkmgjalkohpaboeabhmjkidfbekmpda
           CRX_SIGNING_KEY: ${{ secrets.MULTIPASS_MAIN_CRX_SIGNING_KEY_20261028 }}
-          SOURCE_REF: ${{ inputs.source_ref || github.sha }}
+          EXTENSION_VERSION: ${{ steps.source.outputs.version }}
         run: |
           set -euo pipefail
           command -v google-chrome
@@ -62,7 +66,7 @@ jobs:
           google-chrome --headless --disable-gpu --no-sandbox \
             --pack-extension="$GITHUB_WORKSPACE/build/chrome" \
             --pack-extension-key="$key"
-          crx="$GITHUB_WORKSPACE/artifacts/multipass-webdav-sync-${SOURCE_REF}.crx"
+          crx="$GITHUB_WORKSPACE/artifacts/multipass-webdav-sync-v${EXTENSION_VERSION}.crx"
           mkdir -p "$GITHUB_WORKSPACE/artifacts"
           cp "$GITHUB_WORKSPACE/build/chrome.crx" "$crx"
           test -s "$crx"
@@ -72,9 +76,9 @@ jobs:
       - name: Upload signed CRX artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: stable-id-crx-${{ inputs.source_ref || github.sha }}
+          name: stable-id-crx-v${{ steps.source.outputs.version }}
           path: |
-            artifacts/multipass-webdav-sync-${{ inputs.source_ref || github.sha }}.crx
+            artifacts/multipass-webdav-sync-v${{ steps.source.outputs.version }}.crx
             artifacts/build-info.txt
           if-no-files-found: error
           retention-days: 30

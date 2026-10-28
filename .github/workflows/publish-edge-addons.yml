@@ -94,7 +94,7 @@ jobs:
       - name: Download signed CRX artifact
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
-          name: stable-id-crx-${{ needs.validate.outputs.tag }}
+          name: stable-id-crx-v${{ needs.validate.outputs.version }}
           path: ${{ runner.temp }}/release-crx
       - name: Attach versioned CRX to the published GitHub Release
         env:
@@ -102,7 +102,7 @@ jobs:
           RELEASE_TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          crx="$RUNNER_TEMP/release-crx/multipass-webdav-sync-${RELEASE_TAG}.crx"
+          crx="$RUNNER_TEMP/release-crx/multipass-webdav-sync-v${RELEASE_VERSION}.crx"
           test -s "$crx"
           gh release upload "$RELEASE_TAG" "$crx" --clobber
       - name: Upload package and submit to Edge Add-ons certification
