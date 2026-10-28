@@ -167,8 +167,8 @@
                 <button type="button" id="webdav-pull" data-i18n="webdav_pull">Pull remote (replace local)</button>
                 <button type="button" id="webdav-push" data-i18n="webdav_push">Push local (replace remote)</button>
                 <button type="button" id="webdav-backup" disabled="disabled" data-i18n="webdav_download_backup">Download latest local backup</button>
+                <button type="button" id="webdav-revoke" data-i18n="webdav_revoke">Revoke WebDAV sync authorization</button>
             </p>
-            <p class="webdav-actions"><button type="button" id="webdav-revoke" data-i18n="webdav_revoke">Revoke WebDAV sync authorization</button></p>
             <p id="webdav-status" class="webdav-status" role="status" aria-live="polite" data-i18n="webdav_status_configure">Configure a WebDAV file URL to begin.</p>
             <p class="webdav-warning" data-i18n="webdav_warning">All WebDAV endpoints must use HTTPS, including localhost, 127.0.0.1 and [::1]. WebDAV stores an encrypted sync envelope; the server still sees Basic account credentials and request metadata. Legacy plaintext remote files are refused by automatic sync and are never silently overwritten; download a backup first, then use explicit Push local migration only after review. Files larger than 5 MiB are rejected. Automatic sync uses a common baseline and strong ETags; if both devices change, the remote file is deleted, a snapshot is empty, or the server does not return reliable ETags, automatic sync stops for review. Browser alarms may run later than the selected interval.</p>
 

@@ -382,15 +382,18 @@ table.form-table td output ul {
     }
 
     .credential-form-actions,
-    .credential-form-actions button,
-    .webdav-actions,
-    .webdav-actions button {
+    .webdav-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5em;
         width: 100%;
     }
 
     .credential-form-actions button,
     .webdav-actions button {
-        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+        margin: 0;
     }
 
     table.form-table,
