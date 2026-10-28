@@ -248,6 +248,19 @@ table.form-table td output ul {
     margin: 0;
 }
 
+.clear-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin: 0.75em 0;
+}
+
+.clear-actions button {
+    flex: 1 1 13em;
+    min-width: 0;
+    margin: 0;
+}
+
 .webdav-status {
     border-left: 4px solid #4a8f54;
     background: #eef7ef;
@@ -382,7 +395,8 @@ table.form-table td output ul {
     }
 
     .credential-form-actions,
-    .webdav-actions {
+    .webdav-actions,
+    .clear-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.5em;
@@ -390,7 +404,8 @@ table.form-table td output ul {
     }
 
     .credential-form-actions button,
-    .webdav-actions button {
+    .webdav-actions button,
+    .clear-actions button {
         width: 100%;
         min-width: 0;
         margin: 0;
@@ -480,7 +495,9 @@ table.form-table td output ul {
 #vault-ui input[type="password"], #vault-ui input[type="text"] { display: block; flex: 1 1 auto; width: 100%; min-width: 0; padding: 10px; margin: 0; border: 1px solid #97abc9; border-radius: 6px; }
 #vault-ui .vault-passphrase-control button { flex: 0 0 auto; }
 #vault-ui input[type="checkbox"] { margin-right: 8px; }
-#vault-ui button { padding: 9px 18px; border: 1px solid #345d9d; border-radius: 6px; background: #345d9d; color: white; min-height: 42px; }
+#vault-ui button { padding: 9px 18px; border: 1px solid #97abc9; border-radius: 6px; background: #e7efff; color: #193254; text-shadow: none; font-weight: 600; min-height: 42px; }
+#vault-ui button:hover:not(:disabled) { background: #d8e5fb; }
+#vault-ui button:focus-visible { outline: 2px solid #345d9d; outline-offset: 2px; }
 #vault-ui button:disabled { opacity: .6; }
 #vault-ui [role="status"] { flex-basis: 100%; }
 .credential-fields label > span:not([data-i18n]) { display: block; margin-top: 6px; color: #725116; font-size: .85em; font-weight: normal; line-height: 1.5; }
