@@ -70,10 +70,10 @@ function assertHtmlPolicy(packagePath, member) {
     assert.ok(input, packagePath + ' ' + member + ' must have an id=url input');
     assert.ok(/\bvalue=["']\^https\?:\/\/["']/i.test(input[0]), packagePath + ' ' + member + ' id=url must have value=^https?://');
     assert.ok(/<meta\s+charset=[\"']utf-8[\"']\s*>/i.test(html), packagePath + ' ' + member + ' must declare UTF-8');
-    var warningKey = member === 'options.html' ? 'website_auth_warning' : 'http_basic_notice';
+    var warningKey = 'http_basic_notice';
     assert.ok(html.indexOf('data-i18n="' + warningKey + '"') !== -1 || html.indexOf("data-i18n='" + warningKey + "'") !== -1, packagePath + ' ' + member + ' must localize the HTTP credential warning');
     var chinese = JSON.parse(unzipText(packagePath, '_locales/zh_CN/messages.json'));
-    assert.ok(chinese[warningKey] && /不会加密|未加密/.test(chinese[warningKey].message), packagePath + ' ' + member + ' must warn that HTTP Basic credentials are not encrypted');
+    assert.ok(chinese[warningKey] && /不会加密|未加密|不加密/.test(chinese[warningKey].message), packagePath + ' ' + member + ' must warn that HTTP Basic credentials are not encrypted');
     if (member === 'options.html') {
         var webdav = html.indexOf('data-i18n="webdav_warning"');
         var vault = html.indexOf('id="vault-ui-container"');

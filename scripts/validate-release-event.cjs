@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
 const { evaluatePublishedRelease } = require('./release-version.cjs');
 
 const result = evaluatePublishedRelease({
@@ -12,15 +13,19 @@ const result = evaluatePublishedRelease({
     'package.json': require('../package.json').version,
     'package-lock.json': require('../package-lock.json').packages?.['']?.version,
     'vendor/common/manifest.json': require('../vendor/common/manifest.json').version,
+    'vendor/firefox-android/manifest.json': require('../vendor/firefox-android/manifest.json').version,
   },
 });
 
 const output = process.env.GITHUB_OUTPUT;
+const sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+if (!/^[0-9a-f]{40}$/.test(sourceSha)) throw new Error('Checked-out release source is not a complete commit SHA.');
 if (output) {
   const lines = [`eligible=${result.eligible}`];
   if (result.eligible) {
     lines.push(`version=${result.version}`);
     lines.push(`tag=${process.env.RELEASE_TAG}`);
+    lines.push(`source_sha=${sourceSha}`);
   }
   fs.appendFileSync(output, `${lines.join('\n')}\n`);
 }
