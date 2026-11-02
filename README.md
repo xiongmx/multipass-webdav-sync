@@ -22,6 +22,7 @@ Version 1.1.4 uses AES-GCM-256 with a random 16-byte salt and 12-byte IV. The ch
 Local credential rules, WebDAV account values, temporary values, backups, synchronization metadata, JSON exports, and WebDAV synchronization files are encrypted. The WebDAV provider still receives its own account authorization and can observe the endpoint, request timing and size, and metadata such as ETags. ETags and hashes detect changes and conflicts; they are not encryption and do not prevent a malicious rollback.
 
 Synchronization stops on conflicts, missing or inconsistent baselines, weak or missing ETags, remote deletion, or other safety checks instead of silently selecting the latest timestamp. Browser alarms are best-effort and may run later than the configured interval.
+If a WebDAV host is served through Cloudflare's orange-cloud proxy or a similar CDN/reverse proxy, response compression can turn a strong ETag into a weak `W/` ETag and trigger the extension's strong-ETag protection, stopping synchronization. Disable HTTP response compression for the WebDAV zone or path in the proxy/CDN settings. Then issue a GET for the WebDAV file and confirm that the response returns a quoted strong ETag (not prefixed with `W/`) and no unwanted `Content-Encoding`.
 
 ## Important limits
 
